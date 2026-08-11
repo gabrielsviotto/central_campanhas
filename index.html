@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Central de Campanhas</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
@@ -444,18 +443,7 @@ td.cargo{color:var(--text-mute); font-size:13px;}
 <div id="root" class="app"><div class="loading">Carregando…</div></div>
 
 <script>
-// ---------------------------------------------------------------------------
-// Configuração do Supabase. Preencha com os dados do seu projeto
-// (Project Settings -> API). A "anon key" é pública por natureza — a
-// segurança dos dados vem das políticas de Row Level Security (RLS) do banco,
-// não do sigilo dessa chave.
-// ---------------------------------------------------------------------------
-const SUPABASE_URL = "https://SEU-PROJETO.supabase.co";
-const SUPABASE_ANON_KEY = "SUA_ANON_KEY_AQUI";
-
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const APP_STATE_ROW_ID = 1; // linha única que guarda todo o estado (records + log)
+const STORAGE_KEY = "central-campanhas-dados";
 
 let state = {
   loading: true,
@@ -534,23 +522,20 @@ function parseStatus(v){
 }
 
 // ---------------------------------------------------------------------------
-// Persistência: um único registro em "app_state" guarda todo o estado
-// (equivalente ao antigo window.storage).
+// Persistência: guardada no localStorage do navegador (por dispositivo/
+// navegador, sem backend). Só é possível ver os mesmos dados de outro
+// computador exportando e reimportando a planilha.
 // ---------------------------------------------------------------------------
 async function loadData(){
   try{
-    const { data, error } = await sb
-      .from("app_state")
-      .select("data")
-      .eq("id", APP_STATE_ROW_ID)
-      .maybeSingle();
-    if(error) throw error;
-    if(data && data.data){
-      state.records = data.data.records || {};
-      state.log = data.data.log || [];
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      state.records = parsed.records || {};
+      state.log = parsed.log || [];
     }
   }catch(e){
-    state.error = "Erro ao carregar dados do Supabase: " + e.message;
+    state.error = "Erro ao carregar dados salvos: " + e.message;
   }
   state.loading = false;
   render();
@@ -558,14 +543,7 @@ async function loadData(){
 
 async function persist(){
   try{
-    const { error } = await sb
-      .from("app_state")
-      .upsert({
-        id: APP_STATE_ROW_ID,
-        data: { records: state.records, log: state.log },
-        updated_at: new Date().toISOString(),
-      });
-    if(error) throw error;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({records: state.records, log: state.log}));
   }catch(e){
     state.error = "Erro ao salvar dados: " + e.message;
   }
@@ -789,14 +767,7 @@ async function clearAll(){
   state.lastReceipt = null;
   state.confirmClear = false;
   try{
-    const { error } = await sb
-      .from("app_state")
-      .upsert({
-        id: APP_STATE_ROW_ID,
-        data: { records: {}, log: [] },
-        updated_at: new Date().toISOString(),
-      });
-    if(error) throw error;
+    localStorage.removeItem(STORAGE_KEY);
   }catch(e){
     state.error = "Erro ao limpar dados: " + e.message;
   }
