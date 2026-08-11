@@ -1,5 +1,7 @@
 # Central de Campanhas
 
+Código HTML para gerar a planilha de pagamentos.
+
 App estático (`index.html`) para importar planilhas de apuração de campanhas e acompanhar o saldo pendente/pago por colaborador. Dados e histórico de importação ficam no Supabase; a página é hospedada no Vercel.
 
 ## 1. Configurar o Supabase
