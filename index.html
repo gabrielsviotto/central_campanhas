@@ -306,6 +306,14 @@ input[type=file]{display:none;}
   padding:22px;
   color:var(--text-dark);
 }
+.panel-sticky{
+  position:sticky;
+  top:0;
+  z-index:5;
+  background:var(--paper);
+  margin:-22px -22px 0;
+  padding:22px 22px 0;
+}
 .panel-head{
   display:flex;
   justify-content:space-between;
@@ -971,6 +979,7 @@ function render(){
   }
 
   html += '<div class="panel">';
+  html += '<div class="panel-sticky">';
   html += '<div class="panel-head">';
   html += '<h2>Saldo por colaborador</h2>';
   html += '<div class="controls">';
@@ -999,6 +1008,7 @@ function render(){
     });
     html += '</div>';
   }
+  html += '</div>';
 
   if(list.length === 0){
     html += '<div class="empty">';
