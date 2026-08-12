@@ -888,6 +888,11 @@ function render(){
     return;
   }
 
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  const searchWasFocused = document.activeElement && document.activeElement.id === "searchInput";
+  const searchSelStart = searchWasFocused ? document.activeElement.selectionStart : null;
+
   const list = aggregate();
   const totalPendenteGeral = list.reduce((s,e)=>s+e.totalPendente,0);
   const totalPagoGeral = list.reduce((s,e)=>s+e.totalPago,0);
@@ -1042,6 +1047,15 @@ function render(){
 
   root.innerHTML = html;
   attachEvents();
+
+  if(searchWasFocused){
+    const newSearchInput = document.getElementById("searchInput");
+    if(newSearchInput){
+      newSearchInput.focus();
+      newSearchInput.setSelectionRange(searchSelStart, searchSelStart);
+    }
+  }
+  window.scrollTo(scrollX, scrollY);
 }
 
 function attachEvents(){
@@ -1092,8 +1106,6 @@ function attachEvents(){
   const searchInput = document.getElementById("searchInput");
   if(searchInput){
     searchInput.addEventListener("input", (e) => { state.search = e.target.value; render(); });
-    searchInput.focus();
-    searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
   }
   const statusSelect = document.getElementById("statusSelect");
   if(statusSelect){
