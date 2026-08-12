@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Central de Campanhas</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -83,96 +83,92 @@ body{
 .stat-item.pend .value{color:var(--pend-accent);}
 .stat-item.pago .value{color:var(--brand-accent);}
 
-/* upload zone */
-.dropzone{
-  border:2px dashed #33397A;
-  border-radius:10px;
-  padding:14px 20px;
-  text-align:center;
-  cursor:pointer;
-  transition:border-color .15s, background .15s;
-  background:var(--ink-soft);
-  margin-bottom:14px;
-}
-.dropzone:hover, .dropzone.drag{
-  border-color:var(--brand-accent);
-  background:#20246E;
-}
-.dropzone .dz-title{
-  font-family:'Fraunces', serif;
-  font-size:15px;
-  font-weight:600;
-  color:var(--paper);
-  margin-bottom:2px;
-}
-.dropzone .dz-sub{
+.session-bar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-family:'IBM Plex Mono', monospace;
   font-size:12px;
   color:#8C97B3;
 }
-input[type=file]{display:none;}
-
-/* receipt toast (signature element) */
-.receipt-wrap{
-  display:flex;
-  justify-content:center;
-  margin-bottom:22px;
-  animation:drop 0.35s ease-out;
-}
-@keyframes drop{
-  from{opacity:0; transform:translateY(-8px);}
-  to{opacity:1; transform:translateY(0);}
-}
-.receipt{
-  background:var(--paper);
-  color:var(--text-dark);
-  font-family:'IBM Plex Mono', monospace;
-  font-size:13px;
-  width:340px;
-  padding:16px 20px 14px;
-  position:relative;
-  box-shadow:0 10px 24px rgba(0,0,0,0.35);
-  border-bottom:1px dashed #C7D3CE;
-}
-.receipt::before, .receipt::after{
-  content:"";
-  position:absolute;
-  left:0; right:0;
-  height:8px;
-  background-image: linear-gradient(135deg, var(--paper) 50%, transparent 50%), linear-gradient(45deg, var(--paper) 50%, transparent 50%);
-  background-size:12px 12px;
-  background-repeat:repeat-x;
-}
-.receipt::before{top:-8px;}
-.receipt::after{bottom:-8px; background-image: linear-gradient(45deg, var(--paper) 50%, transparent 50%), linear-gradient(135deg, var(--paper) 50%, transparent 50%); background-position:0 0;}
-.receipt h3{
-  font-family:'Fraunces', serif;
-  font-size:15px;
-  margin:0 0 8px;
-  text-align:center;
-  letter-spacing:0.03em;
-}
-.receipt .rline{
-  display:flex;
-  justify-content:space-between;
-  padding:2px 0;
-}
-.receipt .rline.total{
-  border-top:1px dashed #C7D3CE;
-  margin-top:6px;
-  padding-top:6px;
-  font-weight:600;
-}
-.receipt .close-r{
-  display:block;
-  margin:10px auto 0;
+.session-bar .who{color:var(--paper);}
+.logout-btn{
   background:none;
-  border:1px solid #C7D3CE;
-  color:var(--text-mute);
+  border:1px solid #33397A;
+  color:#A9B4CC;
   font-family:'IBM Plex Sans', sans-serif;
-  font-size:11px;
-  padding:4px 10px;
+  font-size:12px;
+  padding:5px 10px;
   border-radius:20px;
   cursor:pointer;
+}
+.logout-btn:hover{border-color:var(--brand-accent); color:var(--brand-accent);}
+
+/* login screen */
+.login-wrap{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.login-card{
+  width:100%;
+  max-width:360px;
+  background:var(--paper);
+  color:var(--text-dark);
+  border-radius:12px;
+  padding:32px 28px;
+  box-shadow:0 20px 50px rgba(0,0,0,0.4);
+}
+.login-card h1{
+  font-family:'Fraunces', serif;
+  font-size:24px;
+  margin:0 0 4px;
+}
+.login-card .sub{
+  font-size:13px;
+  color:var(--text-mute);
+  margin:0 0 22px;
+}
+.login-card label{
+  display:block;
+  font-size:12px;
+  font-weight:600;
+  margin-bottom:5px;
+  color:var(--text-mute);
+}
+.login-card input{
+  width:100%;
+  padding:10px 11px;
+  border-radius:6px;
+  border:1px solid var(--paper-dim);
+  background:#fff;
+  font-family:'IBM Plex Sans', sans-serif;
+  font-size:14px;
+  margin-bottom:14px;
+}
+.login-card button{
+  width:100%;
+  padding:11px;
+  border-radius:6px;
+  border:none;
+  background:var(--ink);
+  color:var(--paper);
+  font-family:'IBM Plex Sans', sans-serif;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+}
+.login-card button:disabled{opacity:0.6; cursor:default;}
+.login-card .login-error{
+  background:#F7E2DA;
+  border:1px solid var(--danger);
+  color:#8A3620;
+  font-size:12.5px;
+  padding:8px 10px;
+  border-radius:6px;
+  margin-bottom:14px;
 }
 
 .error-banner{
@@ -184,121 +180,6 @@ input[type=file]{display:none;}
   font-size:13px;
   margin-bottom:16px;
 }
-
-.gsheet-box{
-  background:var(--ink-soft);
-  border:1px solid #262B70;
-  border-radius:10px;
-  padding:2px 16px 12px;
-  margin-bottom:14px;
-}
-.gsheet-title{
-  font-family:'Fraunces', serif;
-  font-size:14px;
-  color:var(--paper);
-  display:block;
-  padding-top:10px;
-  margin-bottom:2px;
-}
-.gsheet-tabs{
-  display:flex;
-  gap:14px;
-  border-bottom:1px solid #262B70;
-  margin:6px 0 10px;
-}
-.tab-btn{
-  background:none;
-  border:none;
-  color:#8C97B3;
-  font-family:'IBM Plex Sans', sans-serif;
-  font-size:12.5px;
-  padding:6px 2px;
-  cursor:pointer;
-  border-bottom:2px solid transparent;
-  margin-bottom:-1px;
-}
-.tab-btn.active{
-  color:var(--paper);
-  border-bottom-color:var(--brand-accent);
-}
-.gsheet-panel .hint{
-  font-size:11.5px;
-  color:#8C97B3;
-  margin:0 0 8px;
-  line-height:1.4;
-}
-.gsheet-row{
-  display:flex;
-  gap:8px;
-}
-.gsheet-row input[type=text]{
-  flex:1;
-  padding:8px 10px;
-  border-radius:6px;
-  border:1px solid #33397A;
-  background:#0D0F45;
-  color:var(--paper);
-  font-family:'IBM Plex Mono', monospace;
-  font-size:12px;
-}
-#pasteArea{
-  width:100%;
-  min-height:70px;
-  padding:8px 10px;
-  border-radius:6px;
-  border:1px solid #33397A;
-  background:#0D0F45;
-  color:var(--paper);
-  font-family:'IBM Plex Mono', monospace;
-  font-size:12px;
-  margin-bottom:8px;
-  resize:vertical;
-}
-.btn.on-dark{
-  background:transparent;
-  border:1px solid var(--brand-accent);
-  color:var(--brand-accent);
-  white-space:nowrap;
-}
-.btn.on-dark:hover{background:rgba(0,207,128,0.12);}
-
-.log-toggle-wrap{
-  margin-bottom:10px;
-  text-align:right;
-}
-.log-box{
-  background:var(--ink-soft);
-  border:1px solid #262B70;
-  border-radius:10px;
-  padding:16px 18px;
-  margin-bottom:22px;
-  overflow-x:auto;
-}
-.log-box table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:12.5px;
-  font-family:'IBM Plex Mono', monospace;
-  color:var(--paper);
-}
-.log-box thead th{
-  text-align:left;
-  font-size:10px;
-  text-transform:uppercase;
-  letter-spacing:0.05em;
-  color:#8C97B3;
-  padding:6px 8px;
-  border-bottom:1px solid #262B70;
-  white-space:nowrap;
-}
-.log-box thead th.num{text-align:right;}
-.log-box tbody td{
-  padding:7px 8px;
-  border-bottom:1px solid #1C2060;
-}
-.log-box tbody td.num{text-align:right;}
-.log-box tbody tr:last-child td{border-bottom:none;}
-.log-box .hint{color:#8C97B3; font-size:12px; text-align:center; padding:10px 0;}
 
 .panel{
   background:var(--paper);
@@ -360,10 +241,6 @@ input[type=file]{display:none;}
   font-family:'IBM Plex Sans', sans-serif;
 }
 .btn:hover{background:#E4F0EC;}
-.btn.danger{
-  color:var(--danger);
-  border-color:#E3B0AC;
-}
 .btn:disabled{opacity:0.55; cursor:default;}
 
 table{
@@ -451,23 +328,6 @@ td.cargo{color:var(--text-mute); font-size:13px;}
   border-bottom-color:var(--brand-accent);
 }
 
-.modal-back{
-  position:fixed; inset:0;
-  background:rgba(0,0,0,0.55);
-  display:flex; align-items:center; justify-content:center;
-  z-index:50;
-}
-.modal{
-  background:var(--paper);
-  color:var(--text-dark);
-  padding:22px;
-  border-radius:10px;
-  width:320px;
-}
-.modal h3{margin:0 0 8px; font-family:'Fraunces',serif;}
-.modal p{font-size:13px; color:var(--text-mute); margin-bottom:16px;}
-.modal .row{display:flex; gap:8px; justify-content:flex-end;}
-
 .loading{
   text-align:center;
   padding:60px;
@@ -480,23 +340,33 @@ td.cargo{color:var(--text-mute); font-size:13px;}
 <div id="root" class="app"><div class="loading">Carregando…</div></div>
 
 <script>
-const STORAGE_KEY = "central-campanhas-dados";
+// ---------------------------------------------------------------------------
+// Configuração do Supabase. Preencha com os dados do seu projeto
+// (Project Settings -> API). A "anon key" é pública por natureza — a
+// segurança dos dados vem das políticas de Row Level Security (RLS) do banco
+// e da exigência de login, não do sigilo dessa chave.
+// ---------------------------------------------------------------------------
+const SUPABASE_URL = "https://mptpyvgigepvsmylnnqu.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_1C1sYenitnZhUausK5lQPw_-lQ4ysAp";
+const CAMPANHAS_TABLE = "campanhas";
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let realtimeChannel = null;
 
 let state = {
+  session: null,
+  authReady: false,
+  loginEmail: "",
+  loginPassword: "",
+  loginError: null,
+  loginBusy: false,
+
   loading: true,
   error: null,
-  records: {},     // map key -> record
-  log: [],          // upload history
-  lastReceipt: null,
+  records: {},     // map key -> record, alimentado pelo Supabase
   search: "",
   statusFilter: "todos",
   expanded: null,
-  dragOver: false,
-  confirmClear: false,
-  gsheetTab: "link",
-  gsheetLink: "",
-  pasteText: "",
-  showLog: false,
   mesFilter: "todos",
   campanhaFilter: "todos",
 };
@@ -507,218 +377,149 @@ function normText(s){
     .toLowerCase().trim().replace(/\s+/g," ");
 }
 
-function mapHeader(h){
-  const n = normText(h);
-  if(n === "status filial") return "statusFilial";
-  if(n === "status colaborador") return "statusColaborador";
-  if(n === "status premiacao" || n === "status premiação") return "statusPremiacao";
-  if(n.includes("descricao") && n.includes("campanha")) return "campanha";
-  if(n === "campanha") return "campanha";
-  if(n === "filial") return "filial";
-  if(n === "regional") return "regional";
-  if(n === "re") return "re";
-  if(n === "nome") return "nome";
-  if(n === "cargo") return "cargo";
-  if(n === "cpf") return "cpf";
-  if(n === "mes" || n === "mês") return "mes";
-  if(n.includes("premia")) return "premiacao";
-  return null;
-}
-
-function parseCPF(v){
-  if(v == null) return "";
-  const s = String(v).replace(/\D/g,"");
-  if(!s) return "";
-  return s.padStart(11,"0");
-}
-
-function parseValor(v){
-  if(v == null || v === "") return 0;
-  if(typeof v === "number") return v;
-  let s = String(v).trim().replace(/[Rr]\$/g,"").trim();
-  if(s.includes(",")){
-    s = s.replace(/\./g,"").replace(",",".");
-  }
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
-}
-
-function parseMes(v){
-  if(v == null) return "";
-  if(v instanceof Date){
-    const mm = String(v.getMonth()+1).padStart(2,"0");
-    return mm + "/" + v.getFullYear();
-  }
-  return String(v).trim();
-}
-
-function parseStatus(v){
+function normalizeStatus(v){
   const s = normText(v);
   if(s.startsWith("pago")) return "Pago";
   if(s.startsWith("pend")) return "Pendente";
   return String(v||"").trim() || "Pendente";
 }
 
+function recordKey(r){
+  return r.cpf + "__" + normText(r.campanha) + "__" + normText(r.mes);
+}
+
 // ---------------------------------------------------------------------------
-// Persistência: guardada no localStorage do navegador (por dispositivo/
-// navegador, sem backend). Só é possível ver os mesmos dados de outro
-// computador exportando e reimportando a planilha.
+// Autenticação (Supabase Auth). Os usuários precisam ser criados manualmente
+// no painel do Supabase (Authentication -> Users -> Invite user) — o
+// autocadastro fica desativado.
 // ---------------------------------------------------------------------------
+async function initAuth(){
+  const { data } = await sb.auth.getSession();
+  state.session = data.session;
+  state.authReady = true;
+  sb.auth.onAuthStateChange((_event, session) => {
+    state.session = session;
+    if(session){
+      loadData();
+      subscribeRealtime();
+    } else {
+      unsubscribeRealtime();
+      state.records = {};
+      render();
+    }
+  });
+  if(state.session){
+    loadData();
+    subscribeRealtime();
+  } else {
+    render();
+  }
+}
+
+async function handleLogin(){
+  if(!state.loginEmail || !state.loginPassword){
+    state.loginError = "Informe e-mail e senha.";
+    render();
+    return;
+  }
+  state.loginBusy = true;
+  state.loginError = null;
+  render();
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: state.loginEmail,
+    password: state.loginPassword,
+  });
+  state.loginBusy = false;
+  if(error){
+    state.loginError = "Não foi possível entrar: " + error.message;
+    render();
+    return;
+  }
+  state.session = data.session;
+  state.loginPassword = "";
+  loadData();
+  subscribeRealtime();
+}
+
+async function handleLogout(){
+  unsubscribeRealtime();
+  try{
+    await sb.auth.signOut();
+  }catch(e){
+    // segue o logout localmente mesmo se a chamada de rede falhar
+  }
+  state.session = null;
+  state.records = {};
+  render();
+}
+
+// ---------------------------------------------------------------------------
+// Dados: lidos direto da tabela "campanhas" no Supabase. Este app é somente
+// leitura — quem alimenta a tabela é outro processo/pessoa. A lista some/
+// aparece sozinha porque o Realtime avisa este app sobre qualquer mudança.
+// ---------------------------------------------------------------------------
+async function fetchRecords(){
+  const { data, error } = await sb.from(CAMPANHAS_TABLE).select("*");
+  if(error) throw error;
+  const records = {};
+  (data || []).forEach(row => {
+    const cpf = String(row.cpf || "").trim();
+    if(!cpf) return;
+    const record = {
+      cpf,
+      nome: row.nome || "",
+      cargo: row.cargo || "",
+      filial: row.filial || "",
+      regional: row.regional || "",
+      re: row.re || "",
+      statusFilial: row.status_filial || "",
+      statusColaborador: row.status_colaborador || "",
+      campanha: row.campanha || "",
+      mes: row.mes || "",
+      premiacao: Number(row.premiacao) || 0,
+      statusPremiacao: normalizeStatus(row.status_premiacao),
+      atualizadoEm: row.atualizado_em ? new Date(row.atualizado_em).getTime() : Date.now(),
+    };
+    records[recordKey(record)] = record;
+  });
+  return records;
+}
+
 async function loadData(){
   try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      const parsed = JSON.parse(raw);
-      state.records = parsed.records || {};
-      state.log = parsed.log || [];
-    }
+    state.records = await fetchRecords();
+    state.error = null;
   }catch(e){
-    state.error = "Erro ao carregar dados salvos: " + e.message;
+    state.error = "Erro ao carregar dados do Supabase: " + e.message;
   }
   state.loading = false;
   render();
 }
 
-async function persist(){
+async function refreshRecordsSilently(){
   try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({records: state.records, log: state.log}));
+    state.records = await fetchRecords();
+    state.error = null;
   }catch(e){
-    state.error = "Erro ao salvar dados: " + e.message;
+    state.error = "Erro ao atualizar dados: " + e.message;
   }
-}
-
-function recordKey(r){
-  return r.cpf + "__" + normText(r.campanha) + "__" + normText(r.mes);
-}
-
-function processWorkbook(rows, filename){
-  if(!rows.length){
-    state.error = "A planilha parece estar vazia.";
-    render();
-    return;
-  }
-  const headerRow = rows[0];
-  const headerMap = headerRow.map(mapHeader);
-
-  if(!headerMap.includes("cpf") || !headerMap.includes("statusPremiacao")){
-    state.error = "Não encontrei as colunas CPF e/ou Status Premiação nesta planilha. Confira os cabeçalhos.";
-    render();
-    return;
-  }
-
-  const dataRows = rows.slice(1).filter(r => r.some(c => c !== "" && c != null));
-  let novos = 0, paraPago = 0, atualizados = 0, semAlteracao = 0, invalidas = 0;
-
-  dataRows.forEach(row => {
-    const obj = {};
-    headerMap.forEach((canon, i) => {
-      if(canon) obj[canon] = row[i];
-    });
-    const cpf = parseCPF(obj.cpf);
-    if(!cpf){ invalidas++; return; }
-
-    const record = {
-      cpf,
-      nome: String(obj.nome||"").trim(),
-      cargo: String(obj.cargo||"").trim(),
-      filial: String(obj.filial||"").trim(),
-      regional: String(obj.regional||"").trim(),
-      re: String(obj.re||"").trim(),
-      statusFilial: String(obj.statusFilial||"").trim(),
-      statusColaborador: String(obj.statusColaborador||"").trim(),
-      campanha: String(obj.campanha||"").trim(),
-      mes: parseMes(obj.mes),
-      premiacao: parseValor(obj.premiacao),
-      statusPremiacao: parseStatus(obj.statusPremiacao),
-      atualizadoEm: Date.now(),
-    };
-    const key = recordKey(record);
-    const prev = state.records[key];
-    if(!prev){
-      novos++;
-    } else if(prev.statusPremiacao !== record.statusPremiacao){
-      if(record.statusPremiacao === "Pago") paraPago++;
-      else atualizados++;
-    } else {
-      semAlteracao++;
-    }
-    state.records[key] = record;
-  });
-
-  const receipt = {
-    filename,
-    novos, paraPago, atualizados, semAlteracao, invalidas,
-    totalProcessadas: dataRows.length,
-    timestamp: new Date().toLocaleString("pt-BR"),
-  };
-  state.lastReceipt = receipt;
-  state.log.unshift(receipt);
-  state.log = state.log.slice(0, 20);
-  state.error = null;
-  persist();
   render();
 }
 
-function handleFile(file){
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try{
-      const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, {type:"array", cellDates:true});
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:""});
-      processWorkbook(rows, file.name);
-    }catch(err){
-      state.error = "Erro ao ler o arquivo: " + err.message;
-      render();
-    }
-  };
-  reader.onerror = () => {
-    state.error = "Não foi possível ler o arquivo.";
-    render();
-  };
-  reader.readAsArrayBuffer(file);
+function subscribeRealtime(){
+  if(realtimeChannel) return;
+  realtimeChannel = sb.channel("campanhas-changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: CAMPANHAS_TABLE }, () => {
+      refreshRecordsSilently();
+    })
+    .subscribe();
 }
 
-async function fetchGoogleSheet(url){
-  if(!url || !url.trim()){
-    state.error = "Cole o link da aba do Google Sheets antes de buscar.";
-    render();
-    return;
+function unsubscribeRealtime(){
+  if(realtimeChannel){
+    sb.removeChannel(realtimeChannel);
+    realtimeChannel = null;
   }
-  const idMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-  if(!idMatch){
-    state.error = "Não consegui identificar o ID da planilha nesse link. Confira se é um link válido do Google Sheets.";
-    render();
-    return;
-  }
-  const gidMatch = url.match(/gid=([0-9]+)/);
-  const gid = gidMatch ? gidMatch[1] : "0";
-  const exportUrl = "https://docs.google.com/spreadsheets/d/" + idMatch[1] + "/export?format=csv&gid=" + gid;
-  try{
-    const resp = await fetch(exportUrl);
-    if(!resp.ok) throw new Error("a planilha respondeu com erro " + resp.status);
-    const text = await resp.text();
-    if(text.trim().toLowerCase().startsWith("<")){
-      throw new Error("a aba não parece estar pública");
-    }
-    const parsed = Papa.parse(text, {skipEmptyLines:true});
-    processWorkbook(parsed.data, "Google Sheets (gid " + gid + ")");
-  }catch(e){
-    state.error = 'Não foi possível buscar essa aba diretamente (' + e.message + '). Confirme se o compartilhamento está como "Qualquer pessoa com o link → Leitor", ou use a aba "Colar dados" abaixo, que sempre funciona.';
-    render();
-  }
-}
-
-function processPastedData(){
-  if(!state.pasteText || !state.pasteText.trim()){
-    state.error = "Cole os dados da planilha antes de processar.";
-    render();
-    return;
-  }
-  const parsed = Papa.parse(state.pasteText, {skipEmptyLines:true});
-  state.pasteText = "";
-  processWorkbook(parsed.data, "Colado do Google Sheets");
 }
 
 function mesSortKey(mes){
@@ -808,19 +609,6 @@ function fmtCPF(cpf){
   return cpf.slice(0,3)+"."+cpf.slice(3,6)+"."+cpf.slice(6,9)+"-"+cpf.slice(9);
 }
 
-async function clearAll(){
-  state.records = {};
-  state.log = [];
-  state.lastReceipt = null;
-  state.confirmClear = false;
-  try{
-    localStorage.removeItem(STORAGE_KEY);
-  }catch(e){
-    state.error = "Erro ao limpar dados: " + e.message;
-  }
-  render();
-}
-
 function exportXLSX(){
   try{
     const allRecords = Object.values(state.records);
@@ -865,7 +653,7 @@ function exportXLSX(){
     const wsSaldo = XLSX.utils.aoa_to_sheet([saldoHeader, ...saldoRows]);
     wsSaldo["!cols"] = [{wch:16},{wch:14},{wch:28},{wch:18},{wch:14},{wch:14},{wch:16},{wch:14},{wch:14},{wch:14},{wch:42},{wch:42}];
 
-    // Aba 2: detalhe, mesma estrutura das planilhas de entrada
+    // Aba 2: detalhe, uma linha por campanha
     const detHeader = ["Filial","Regional","RE","Nome","Cargo","CPF","Status Filial","Status Colaborador","Premiação","Mês","Descrição Campanha","Status Premiação"];
     const detRows = allRecords
       .sort((a,b) => a.nome.localeCompare(b.nome) || (a.mes||"").localeCompare(b.mes||""))
@@ -889,10 +677,46 @@ function exportXLSX(){
   }
 }
 
+function renderLogin(){
+  const root = document.getElementById("root");
+  let html = '<div class="login-wrap"><div class="login-card">';
+  html += '<h1>Central de Campanhas</h1>';
+  html += '<p class="sub">Entre com a conta cadastrada para acessar os dados.</p>';
+  if(state.loginError){
+    html += '<div class="login-error">'+state.loginError+'</div>';
+  }
+  html += '<label for="loginEmail">E-mail</label>';
+  html += '<input type="text" id="loginEmail" autocomplete="username" value="'+(state.loginEmail||"").replace(/"/g,"&quot;")+'">';
+  html += '<label for="loginPassword">Senha</label>';
+  html += '<input type="password" id="loginPassword" autocomplete="current-password" value="'+(state.loginPassword||"").replace(/"/g,"&quot;")+'">';
+  html += '<button id="loginBtn"'+(state.loginBusy?" disabled":"")+'>'+(state.loginBusy?"Entrando…":"Entrar")+'</button>';
+  html += '</div></div>';
+  root.innerHTML = html;
+
+  const emailInput = document.getElementById("loginEmail");
+  const passInput = document.getElementById("loginPassword");
+  emailInput.addEventListener("input", e => { state.loginEmail = e.target.value; });
+  passInput.addEventListener("input", e => { state.loginPassword = e.target.value; });
+  const submit = () => handleLogin();
+  document.getElementById("loginBtn").addEventListener("click", submit);
+  [emailInput, passInput].forEach(inp => inp.addEventListener("keydown", e => {
+    if(e.key === "Enter") submit();
+  }));
+}
+
 function render(){
   const root = document.getElementById("root");
+
+  if(!state.authReady){
+    root.innerHTML = '<div class="loading">Carregando…</div>';
+    return;
+  }
+  if(!state.session){
+    renderLogin();
+    return;
+  }
   if(state.loading){
-    root.innerHTML = '<div class="loading">Carregando dados salvos…</div>';
+    root.innerHTML = '<div class="loading">Carregando dados…</div>';
     return;
   }
 
@@ -908,74 +732,16 @@ function render(){
   let html = '';
 
   html += '<div class="masthead">';
-  html += '<div><h1>Central de Campanhas</h1><p>Solte as planilhas de apuração e acompanhe o saldo por colaborador</p></div>';
+  html += '<div><h1>Central de Campanhas</h1><p>Painel de acompanhamento por colaborador — atualizado automaticamente</p></div>';
   html += '<div class="stats">';
   html += '<div class="stat-item"><span class="label">Colaboradores</span><span class="value">'+list.length+'</span></div>';
   html += '<div class="stat-item pend"><span class="label">Pendente</span><span class="value">'+fmtMoney(totalPendenteGeral)+'</span></div>';
   html += '<div class="stat-item pago"><span class="label">Pago</span><span class="value">'+fmtMoney(totalPagoGeral)+'</span></div>';
+  html += '<div class="session-bar"><span class="who">'+(state.session.user.email||"")+'</span><button class="logout-btn" id="logoutBtn">Sair</button></div>';
   html += '</div></div>';
 
   if(state.error){
     html += '<div class="error-banner">'+state.error+'</div>';
-  }
-
-  html += '<div class="dropzone" id="dropzone">';
-  html += '<div class="dz-title">Arraste a planilha aqui ou clique para escolher</div>';
-  html += '<div class="dz-sub">.xlsx ou .csv — colunas: Filial, Regional, RE, Nome, Cargo, CPF, Status Filial, Status Colaborador, Premiação, Mês, Descrição Campanha, Status Premiação</div>';
-  html += '<input type="file" id="fileInput" accept=".xlsx,.xls,.csv">';
-  html += '</div>';
-
-  html += '<div class="gsheet-box">';
-  html += '<span class="gsheet-title">Importar de uma aba do Google Sheets</span>';
-  html += '<div class="gsheet-tabs">';
-  html += '<button class="tab-btn'+(state.gsheetTab==="link"?" active":"")+'" data-tab="link">Link da aba</button>';
-  html += '<button class="tab-btn'+(state.gsheetTab==="paste"?" active":"")+'" data-tab="paste">Colar dados</button>';
-  html += '</div>';
-  if(state.gsheetTab === "link"){
-    html += '<div class="gsheet-panel">';
-    html += '<p class="hint">Funciona se a aba estiver compartilhada como "Qualquer pessoa com o link → Leitor". Abra a aba desejada e cole o link completo (com #gid=... no final).</p>';
-    html += '<div class="gsheet-row"><input type="text" id="gsheetLinkInput" placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=0" value="'+ (state.gsheetLink||"").replace(/"/g,"&quot;") +'"><button class="btn on-dark" id="gsheetFetchBtn">Buscar aba</button></div>';
-    html += '</div>';
-  } else {
-    html += '<div class="gsheet-panel">';
-    html += '<p class="hint">Funciona sempre, mesmo com a planilha privada. Na aba do Google Sheets, selecione os dados com cabeçalho (Ctrl+A ou selecione o intervalo), copie (Ctrl+C) e cole aqui.</p>';
-    html += '<textarea id="pasteArea" placeholder="Cole aqui os dados copiados da planilha...">'+ (state.pasteText||"") +'</textarea>';
-    html += '<button class="btn on-dark" id="pasteProcessBtn">Processar dados colados</button>';
-    html += '</div>';
-  }
-  html += '</div>';
-
-  html += '<div class="log-toggle-wrap"><button class="btn on-dark" id="toggleLogBtn">'+(state.showLog ? "Ocultar" : "Ver") + " histórico de importações (" + state.log.length + ")</button></div>";
-
-  if(state.showLog){
-    html += '<div class="log-box">';
-    if(state.log.length === 0){
-      html += '<div class="hint">Nenhuma importação registrada ainda.</div>';
-    } else {
-      html += '<table><thead><tr><th>Planilha / aba</th><th>Quando</th><th class="num">Novos</th><th class="num">P/ pago</th><th class="num">Outras atualiz.</th><th class="num">Sem alteração</th><th class="num">Total</th></tr></thead><tbody>';
-      state.log.forEach(r => {
-        html += '<tr><td>'+r.filename+'</td><td>'+r.timestamp+'</td><td class="num">'+r.novos+'</td><td class="num">'+r.paraPago+'</td><td class="num">'+r.atualizados+'</td><td class="num">'+r.semAlteracao+'</td><td class="num">'+r.totalProcessadas+'</td></tr>';
-      });
-      html += '</tbody></table>';
-    }
-    html += '</div>';
-  }
-
-  if(state.lastReceipt){
-    const r = state.lastReceipt;
-    html += '<div class="receipt-wrap"><div class="receipt">';
-    html += '<h3>COMPROVANTE DE IMPORTAÇÃO</h3>';
-    html += '<div class="rline"><span>arquivo</span><span>'+r.filename.slice(0,22)+'</span></div>';
-    html += '<div class="rline"><span>registros novos</span><span>'+r.novos+'</span></div>';
-    html += '<div class="rline"><span>marcados como pago</span><span>'+r.paraPago+'</span></div>';
-    html += '<div class="rline"><span>outras atualizações</span><span>'+r.atualizados+'</span></div>';
-    html += '<div class="rline"><span>sem alteração</span><span>'+r.semAlteracao+'</span></div>';
-    if(r.invalidas > 0){
-      html += '<div class="rline"><span>linhas inválidas (sem CPF)</span><span>'+r.invalidas+'</span></div>';
-    }
-    html += '<div class="rline total"><span>total processado</span><span>'+r.totalProcessadas+'</span></div>';
-    html += '<button class="close-r" id="closeReceipt">ok, fechar</button>';
-    html += '</div></div>';
   }
 
   html += '<div class="panel">';
@@ -996,7 +762,6 @@ function render(){
   });
   html += '</select>';
   html += '<button class="btn" id="exportBtn">Baixar XLSX</button>';
-  html += '<button class="btn danger" id="clearBtn">Limpar dados</button>';
   html += '</div></div>';
 
   const campanhas = distinctCampanhas();
@@ -1013,7 +778,7 @@ function render(){
   if(list.length === 0){
     html += '<div class="empty">';
     if(Object.keys(state.records).length === 0){
-      html += 'Nenhum dado ainda. <b>Solte a primeira planilha de apuração acima</b> para começar.';
+      html += 'Nenhum dado disponível ainda. Assim que os dados forem cadastrados no Supabase, eles aparecem aqui automaticamente.';
     } else {
       html += 'Nenhum colaborador encontrado para este filtro.';
     }
@@ -1047,14 +812,6 @@ function render(){
 
   html += '</div>';
 
-  if(state.confirmClear){
-    html += '<div class="modal-back" id="modalBack"><div class="modal">';
-    html += '<h3>Limpar todos os dados?</h3>';
-    html += '<p>Isso vai apagar permanentemente todos os registros importados. Essa ação não pode ser desfeita.</p>';
-    html += '<div class="row"><button class="btn" id="cancelClear">Cancelar</button><button class="btn danger" id="confirmClearBtn">Apagar tudo</button></div>';
-    html += '</div></div>';
-  }
-
   root.innerHTML = html;
   attachEvents();
 
@@ -1069,49 +826,9 @@ function render(){
 }
 
 function attachEvents(){
-  const dz = document.getElementById("dropzone");
-  const fileInput = document.getElementById("fileInput");
-  if(dz){
-    dz.addEventListener("click", () => fileInput.click());
-    dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
-    dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
-    dz.addEventListener("drop", (e) => {
-      e.preventDefault();
-      dz.classList.remove("drag");
-      if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-    });
-  }
-  if(fileInput){
-    fileInput.addEventListener("change", (e) => {
-      if(e.target.files.length) handleFile(e.target.files[0]);
-    });
-  }
-  const closeReceipt = document.getElementById("closeReceipt");
-  if(closeReceipt){
-    closeReceipt.addEventListener("click", () => { state.lastReceipt = null; render(); });
-  }
-  document.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => { state.gsheetTab = btn.getAttribute("data-tab"); render(); });
-  });
-  const gsheetLinkInput = document.getElementById("gsheetLinkInput");
-  if(gsheetLinkInput){
-    gsheetLinkInput.addEventListener("input", (e) => { state.gsheetLink = e.target.value; });
-  }
-  const gsheetFetchBtn = document.getElementById("gsheetFetchBtn");
-  if(gsheetFetchBtn){
-    gsheetFetchBtn.addEventListener("click", () => fetchGoogleSheet(state.gsheetLink));
-  }
-  const pasteArea = document.getElementById("pasteArea");
-  if(pasteArea){
-    pasteArea.addEventListener("input", (e) => { state.pasteText = e.target.value; });
-  }
-  const pasteProcessBtn = document.getElementById("pasteProcessBtn");
-  if(pasteProcessBtn){
-    pasteProcessBtn.addEventListener("click", processPastedData);
-  }
-  const toggleLogBtn = document.getElementById("toggleLogBtn");
-  if(toggleLogBtn){
-    toggleLogBtn.addEventListener("click", () => { state.showLog = !state.showLog; render(); });
+  const logoutBtn = document.getElementById("logoutBtn");
+  if(logoutBtn){
+    logoutBtn.addEventListener("click", handleLogout);
   }
   const searchInput = document.getElementById("searchInput");
   if(searchInput){
@@ -1132,18 +849,6 @@ function attachEvents(){
   if(exportBtn){
     exportBtn.addEventListener("click", exportXLSX);
   }
-  const clearBtn = document.getElementById("clearBtn");
-  if(clearBtn){
-    clearBtn.addEventListener("click", () => { state.confirmClear = true; render(); });
-  }
-  const cancelClear = document.getElementById("cancelClear");
-  if(cancelClear){
-    cancelClear.addEventListener("click", () => { state.confirmClear = false; render(); });
-  }
-  const confirmClearBtn = document.getElementById("confirmClearBtn");
-  if(confirmClearBtn){
-    confirmClearBtn.addEventListener("click", clearAll);
-  }
   document.querySelectorAll(".emp-row").forEach(row => {
     row.addEventListener("click", () => {
       const cpf = row.getAttribute("data-cpf");
@@ -1153,7 +858,7 @@ function attachEvents(){
   });
 }
 
-loadData();
+initAuth();
 </script>
 </body>
 </html>
