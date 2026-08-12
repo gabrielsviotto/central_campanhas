@@ -104,6 +104,43 @@ body{
 }
 .logout-btn:hover{border-color:var(--brand-accent); color:var(--brand-accent);}
 
+.password-panel{
+  background:var(--ink-soft);
+  border:1px solid #262B70;
+  border-radius:10px;
+  padding:16px 18px;
+  margin-bottom:16px;
+}
+.password-panel h3{
+  font-family:'Fraunces', serif;
+  font-size:15px;
+  margin:0 0 10px;
+  color:var(--paper);
+}
+.password-msg{
+  font-size:12.5px;
+  padding:8px 10px;
+  border-radius:6px;
+  margin-bottom:10px;
+}
+.password-msg.error{background:#3A2420; border:1px solid var(--danger); color:#F0C7B8;}
+.password-msg.success{background:#0C3A28; border:1px solid var(--brand-accent); color:#BFF3DA;}
+.password-row{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.password-row input{
+  padding:8px 10px;
+  border-radius:6px;
+  border:1px solid #33397A;
+  background:#0D0F45;
+  color:var(--paper);
+  font-family:'IBM Plex Sans', sans-serif;
+  font-size:13px;
+  min-width:160px;
+}
+
 /* login screen */
 .login-wrap{
   min-height:100vh;
@@ -369,6 +406,12 @@ let state = {
   expanded: null,
   mesFilter: "todos",
   campanhaFilter: "todos",
+
+  passwordFormOpen: false,
+  newPassword: "",
+  newPassword2: "",
+  passwordMsg: null,
+  passwordBusy: false,
 };
 
 function normText(s){
@@ -450,6 +493,33 @@ async function handleLogout(){
   }
   state.session = null;
   state.records = {};
+  render();
+}
+
+async function handleSetPassword(){
+  if(!state.newPassword || state.newPassword.length < 6){
+    state.passwordMsg = { type: "error", text: "A senha precisa ter pelo menos 6 caracteres." };
+    render();
+    return;
+  }
+  if(state.newPassword !== state.newPassword2){
+    state.passwordMsg = { type: "error", text: "As senhas não são iguais." };
+    render();
+    return;
+  }
+  state.passwordBusy = true;
+  state.passwordMsg = null;
+  render();
+  const { error } = await sb.auth.updateUser({ password: state.newPassword });
+  state.passwordBusy = false;
+  if(error){
+    state.passwordMsg = { type: "error", text: "Não foi possível salvar: " + error.message };
+    render();
+    return;
+  }
+  state.newPassword = "";
+  state.newPassword2 = "";
+  state.passwordMsg = { type: "success", text: "Senha definida! Use-a no próximo login." };
   render();
 }
 
@@ -737,11 +807,24 @@ function render(){
   html += '<div class="stat-item"><span class="label">Colaboradores</span><span class="value">'+list.length+'</span></div>';
   html += '<div class="stat-item pend"><span class="label">Pendente</span><span class="value">'+fmtMoney(totalPendenteGeral)+'</span></div>';
   html += '<div class="stat-item pago"><span class="label">Pago</span><span class="value">'+fmtMoney(totalPagoGeral)+'</span></div>';
-  html += '<div class="session-bar"><span class="who">'+(state.session.user.email||"")+'</span><button class="logout-btn" id="logoutBtn">Sair</button></div>';
+  html += '<div class="session-bar"><span class="who">'+(state.session.user.email||"")+'</span><button class="logout-btn" id="togglePasswordBtn">Definir senha</button><button class="logout-btn" id="logoutBtn">Sair</button></div>';
   html += '</div></div>';
 
   if(state.error){
     html += '<div class="error-banner">'+state.error+'</div>';
+  }
+
+  if(state.passwordFormOpen){
+    html += '<div class="password-panel">';
+    html += '<h3>Definir senha</h3>';
+    if(state.passwordMsg){
+      html += '<div class="password-msg '+state.passwordMsg.type+'">'+state.passwordMsg.text+'</div>';
+    }
+    html += '<div class="password-row">';
+    html += '<input type="password" id="newPassword" placeholder="Nova senha" value="'+(state.newPassword||"").replace(/"/g,"&quot;")+'">';
+    html += '<input type="password" id="newPassword2" placeholder="Confirmar senha" value="'+(state.newPassword2||"").replace(/"/g,"&quot;")+'">';
+    html += '<button class="btn" id="savePasswordBtn"'+(state.passwordBusy?" disabled":"")+'>'+(state.passwordBusy?"Salvando…":"Salvar")+'</button>';
+    html += '</div></div>';
   }
 
   html += '<div class="panel">';
@@ -829,6 +912,26 @@ function attachEvents(){
   const logoutBtn = document.getElementById("logoutBtn");
   if(logoutBtn){
     logoutBtn.addEventListener("click", handleLogout);
+  }
+  const togglePasswordBtn = document.getElementById("togglePasswordBtn");
+  if(togglePasswordBtn){
+    togglePasswordBtn.addEventListener("click", () => {
+      state.passwordFormOpen = !state.passwordFormOpen;
+      state.passwordMsg = null;
+      render();
+    });
+  }
+  const newPasswordInput = document.getElementById("newPassword");
+  if(newPasswordInput){
+    newPasswordInput.addEventListener("input", (e) => { state.newPassword = e.target.value; });
+  }
+  const newPassword2Input = document.getElementById("newPassword2");
+  if(newPassword2Input){
+    newPassword2Input.addEventListener("input", (e) => { state.newPassword2 = e.target.value; });
+  }
+  const savePasswordBtn = document.getElementById("savePasswordBtn");
+  if(savePasswordBtn){
+    savePasswordBtn.addEventListener("click", handleSetPassword);
   }
   const searchInput = document.getElementById("searchInput");
   if(searchInput){
