@@ -414,6 +414,33 @@ td.cargo{color:var(--text-mute); font-size:13px;}
 }
 .empty b{color:var(--text-dark);}
 
+.sheet-tabs{
+  display:flex;
+  gap:4px;
+  overflow-x:auto;
+  margin-bottom:14px;
+  border-bottom:1px solid var(--paper-dim);
+}
+.sheet-tab{
+  background:none;
+  border:none;
+  border-bottom:2px solid transparent;
+  color:var(--text-mute);
+  font-family:'IBM Plex Sans', sans-serif;
+  font-size:12.5px;
+  padding:4px 12px 8px;
+  cursor:pointer;
+  white-space:nowrap;
+  flex-shrink:0;
+  margin-bottom:-1px;
+}
+.sheet-tab:hover{color:var(--text-dark);}
+.sheet-tab.active{
+  color:var(--text-dark);
+  font-weight:600;
+  border-bottom-color:var(--amber);
+}
+
 .modal-back{
   position:fixed; inset:0;
   background:rgba(0,0,0,0.55);
@@ -461,6 +488,7 @@ let state = {
   pasteText: "",
   showLog: false,
   mesFilter: "todos",
+  campanhaFilter: "todos",
 };
 
 function normText(s){
@@ -703,11 +731,20 @@ function distinctMonths(){
   return arr;
 }
 
+function distinctCampanhas(){
+  const set = new Set();
+  Object.values(state.records).forEach(r => { if(r.campanha) set.add(r.campanha); });
+  return Array.from(set).sort((a,b) => a.localeCompare(b));
+}
+
 function aggregate(){
   const byCpf = {};
   let baseRecords = Object.values(state.records);
   if(state.mesFilter !== "todos"){
     baseRecords = baseRecords.filter(r => r.mes === state.mesFilter);
+  }
+  if(state.campanhaFilter !== "todos"){
+    baseRecords = baseRecords.filter(r => r.campanha === state.campanhaFilter);
   }
   baseRecords.forEach(r => {
     if(!byCpf[r.cpf]){
@@ -946,6 +983,16 @@ function render(){
   html += '<button class="btn danger" id="clearBtn">Limpar dados</button>';
   html += '</div></div>';
 
+  const campanhas = distinctCampanhas();
+  if(campanhas.length > 0){
+    html += '<div class="sheet-tabs">';
+    html += '<button class="sheet-tab'+(state.campanhaFilter==="todos"?" active":"")+'" data-campanha="todos">Todas as campanhas</button>';
+    campanhas.forEach(c => {
+      html += '<button class="sheet-tab'+(state.campanhaFilter===c?" active":"")+'" data-campanha="'+c.replace(/"/g,"&quot;")+'">'+c+'</button>';
+    });
+    html += '</div>';
+  }
+
   if(list.length === 0){
     html += '<div class="empty">';
     if(Object.keys(state.records).length === 0){
@@ -980,6 +1027,7 @@ function render(){
     });
     html += '</tbody></table>';
   }
+
   html += '</div>';
 
   if(state.confirmClear){
@@ -1053,6 +1101,9 @@ function attachEvents(){
   if(mesSelect){
     mesSelect.addEventListener("change", (e) => { state.mesFilter = e.target.value; render(); });
   }
+  document.querySelectorAll(".sheet-tab").forEach(tab => {
+    tab.addEventListener("click", () => { state.campanhaFilter = tab.getAttribute("data-campanha"); render(); });
+  });
   const exportBtn = document.getElementById("exportBtn");
   if(exportBtn){
     exportBtn.addEventListener("click", exportXLSX);
