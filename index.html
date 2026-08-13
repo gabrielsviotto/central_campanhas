@@ -407,6 +407,33 @@ td.cargo{color:var(--text-mute); font-size:13px;}
   padding:5px 6px;
 }
 
+.sheet-tabs{
+  display:flex;
+  gap:4px;
+  overflow-x:auto;
+  margin-bottom:14px;
+  border-bottom:1px solid var(--paper-dim);
+}
+.sheet-tab{
+  background:none;
+  border:none;
+  border-bottom:2px solid transparent;
+  color:var(--text-mute);
+  font-family:'IBM Plex Sans', sans-serif;
+  font-size:12.5px;
+  padding:4px 12px 8px;
+  cursor:pointer;
+  white-space:nowrap;
+  flex-shrink:0;
+  margin-bottom:-1px;
+}
+.sheet-tab:hover{color:var(--text-dark);}
+.sheet-tab.active{
+  color:var(--text-dark);
+  font-weight:600;
+  border-bottom-color:var(--brand-accent);
+}
+
 .loading{
   text-align:center;
   padding:60px;
@@ -447,8 +474,10 @@ let state = {
   expanded: null,
   // filtros aplicados (usados pelo aggregate()) e filtros em edição (ainda não
   // aplicados, controlados pelas caixas de marcar até clicar em "Aplicar").
-  filters: { status: [], mes: [], filial: [], regional: [], cargo: [], campanha: [] },
-  pendingFilters: { status: [], mes: [], filial: [], regional: [], cargo: [], campanha: [] },
+  // Campanha fica de fora: continua no formato antigo de abas (seleção única).
+  filters: { status: [], mes: [], filial: [], regional: [], cargo: [] },
+  pendingFilters: { status: [], mes: [], filial: [], regional: [], cargo: [] },
+  campanhaFilter: "todos",
   sortColumn: null,
   sortDir: "asc",
   lastSystemRefresh: null,
@@ -734,8 +763,8 @@ function aggregate(){
   if(f.mes.length > 0){
     baseRecords = baseRecords.filter(r => f.mes.includes(r.mes));
   }
-  if(f.campanha.length > 0){
-    baseRecords = baseRecords.filter(r => f.campanha.includes(r.campanha));
+  if(state.campanhaFilter !== "todos"){
+    baseRecords = baseRecords.filter(r => r.campanha === state.campanhaFilter);
   }
   if(f.filial.length > 0){
     baseRecords = baseRecords.filter(r => f.filial.includes(r.filial));
@@ -821,14 +850,14 @@ function applyFilters(){
     filial: state.pendingFilters.filial.slice(),
     regional: state.pendingFilters.regional.slice(),
     cargo: state.pendingFilters.cargo.slice(),
-    campanha: state.pendingFilters.campanha.slice(),
   };
   render();
 }
 
 function clearFilters(){
-  state.filters = { status: [], mes: [], filial: [], regional: [], cargo: [], campanha: [] };
-  state.pendingFilters = { status: [], mes: [], filial: [], regional: [], cargo: [], campanha: [] };
+  state.filters = { status: [], mes: [], filial: [], regional: [], cargo: [] };
+  state.pendingFilters = { status: [], mes: [], filial: [], regional: [], cargo: [] };
+  state.campanhaFilter = "todos";
   state.search = "";
   render();
 }
@@ -1002,7 +1031,6 @@ function render(){
   html += renderMultiFilter('filial', 'Filial', distinctFiliais());
   html += renderMultiFilter('regional', 'Regional', distinctRegionais());
   html += renderMultiFilter('cargo', 'Cargo', distinctCargos());
-  html += renderMultiFilter('campanha', 'Campanha', distinctCampanhas());
   html += '<button class="btn btn-accent" id="applyFiltersBtn">Aplicar</button>';
   html += '<button class="btn danger" id="clearFiltersBtn">Limpar filtros</button>';
   html += '<button class="btn" id="exportBtn">Baixar XLSX</button>';
@@ -1012,6 +1040,16 @@ function render(){
   html += '<span>Painel atualizado às '+fmtDateTime(state.lastSystemRefresh)+'</span>';
   html += '<span>Dados alterados pela última vez em '+fmtDateTime(lastDbUpdate())+'</span>';
   html += '</div>';
+
+  const campanhas = distinctCampanhas();
+  if(campanhas.length > 0){
+    html += '<div class="sheet-tabs">';
+    html += '<button class="sheet-tab'+(state.campanhaFilter==="todos"?" active":"")+'" data-campanha="todos">Todas as campanhas</button>';
+    campanhas.forEach(c => {
+      html += '<button class="sheet-tab'+(state.campanhaFilter===c?" active":"")+'" data-campanha="'+c.replace(/"/g,"&quot;")+'">'+c+'</button>';
+    });
+    html += '</div>';
+  }
   html += '</div>';
 
   if(list.length === 0){
@@ -1148,6 +1186,9 @@ function attachEvents(){
       }
       render();
     });
+  });
+  document.querySelectorAll(".sheet-tab").forEach(tab => {
+    tab.addEventListener("click", () => { state.campanhaFilter = tab.getAttribute("data-campanha"); render(); });
   });
   const exportBtn = document.getElementById("exportBtn");
   if(exportBtn){
