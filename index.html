@@ -295,6 +295,18 @@ thead th{
   border-bottom:2px solid var(--paper-dim);
 }
 thead th.num{text-align:right;}
+thead th.sortable{cursor:pointer; user-select:none; white-space:nowrap;}
+thead th.sortable:hover{color:var(--text-dark);}
+thead th.sortable.active{color:var(--text-dark); font-weight:700;}
+
+.meta-info{
+  display:flex;
+  gap:16px;
+  flex-wrap:wrap;
+  font-size:11.5px;
+  color:var(--text-mute);
+  margin-bottom:14px;
+}
 tbody tr{
   border-bottom:1px solid var(--paper-line);
   cursor:pointer;
@@ -406,6 +418,12 @@ let state = {
   expanded: null,
   mesFilter: "todos",
   campanhaFilter: "todos",
+  filialFilter: "todos",
+  regionalFilter: "todos",
+  cargoFilter: "todos",
+  sortColumn: null,
+  sortDir: "asc",
+  lastSystemRefresh: null,
 
   passwordFormOpen: false,
   newPassword: "",
@@ -559,6 +577,7 @@ async function loadData(){
   try{
     state.records = await fetchRecords();
     state.error = null;
+    state.lastSystemRefresh = Date.now();
   }catch(e){
     state.error = "Erro ao carregar dados do Supabase: " + e.message;
   }
@@ -570,6 +589,7 @@ async function refreshRecordsSilently(){
   try{
     state.records = await fetchRecords();
     state.error = null;
+    state.lastSystemRefresh = Date.now();
   }catch(e){
     state.error = "Erro ao atualizar dados: " + e.message;
   }
@@ -618,6 +638,63 @@ function distinctCampanhas(){
   return Array.from(set).sort((a,b) => a.localeCompare(b));
 }
 
+function distinctFiliais(){
+  const set = new Set();
+  Object.values(state.records).forEach(r => { if(r.filial) set.add(r.filial); });
+  return Array.from(set).sort((a,b) => a.localeCompare(b));
+}
+
+function distinctRegionais(){
+  const set = new Set();
+  Object.values(state.records).forEach(r => { if(r.regional) set.add(r.regional); });
+  return Array.from(set).sort((a,b) => a.localeCompare(b));
+}
+
+function distinctCargos(){
+  const set = new Set();
+  Object.values(state.records).forEach(r => { if(r.cargo) set.add(r.cargo); });
+  return Array.from(set).sort((a,b) => a.localeCompare(b));
+}
+
+function lastDbUpdate(){
+  let max = 0;
+  Object.values(state.records).forEach(r => { if(r.atualizadoEm > max) max = r.atualizadoEm; });
+  return max || null;
+}
+
+function fmtDateTime(ms){
+  if(!ms) return "—";
+  return new Date(ms).toLocaleString("pt-BR", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit", second:"2-digit"});
+}
+
+const SORT_ACCESSORS = {
+  filial: e => e.filial || "",
+  regional: e => e.regional || "",
+  re: e => e.re || "",
+  nome: e => e.nome || "",
+  cargo: e => e.cargo || "",
+  cpf: e => e.cpf || "",
+  totalPendente: e => e.totalPendente,
+  totalPago: e => e.totalPago,
+  qtdPendente: e => e.qtdPendente,
+};
+
+function sortList(list){
+  const col = state.sortColumn;
+  if(!col || !SORT_ACCESSORS[col]){
+    list.sort((a,b) => b.totalPendente - a.totalPendente || a.nome.localeCompare(b.nome));
+    return list;
+  }
+  const acc = SORT_ACCESSORS[col];
+  const dir = state.sortDir === "desc" ? -1 : 1;
+  list.sort((a,b) => {
+    const va = acc(a), vb = acc(b);
+    const cmp = (typeof va === "number" && typeof vb === "number") ? (va - vb) : String(va).localeCompare(String(vb));
+    return cmp * dir;
+  });
+  return list;
+}
+
 function aggregate(){
   const byCpf = {};
   let baseRecords = Object.values(state.records);
@@ -626,6 +703,15 @@ function aggregate(){
   }
   if(state.campanhaFilter !== "todos"){
     baseRecords = baseRecords.filter(r => r.campanha === state.campanhaFilter);
+  }
+  if(state.filialFilter !== "todos"){
+    baseRecords = baseRecords.filter(r => r.filial === state.filialFilter);
+  }
+  if(state.regionalFilter !== "todos"){
+    baseRecords = baseRecords.filter(r => r.regional === state.regionalFilter);
+  }
+  if(state.cargoFilter !== "todos"){
+    baseRecords = baseRecords.filter(r => r.cargo === state.cargoFilter);
   }
   baseRecords.forEach(r => {
     if(!byCpf[r.cpf]){
@@ -666,8 +752,14 @@ function aggregate(){
     list = list.filter(e => e.qtdPendente === 0);
   }
 
-  list.sort((a,b) => b.totalPendente - a.totalPendente || a.nome.localeCompare(b.nome));
+  sortList(list);
   return list;
+}
+
+function thSort(label, col, extraClass){
+  const active = state.sortColumn === col;
+  const arrow = active ? (state.sortDir === "asc" ? " ▲" : " ▼") : "";
+  return '<th class="sortable'+(extraClass?' '+extraClass:'')+(active?' active':'')+'" data-sort="'+col+'">'+label+arrow+'</th>';
 }
 
 function fmtMoney(v){
@@ -844,8 +936,31 @@ function render(){
     html += '<option value="'+m.replace(/"/g,"&quot;")+'"'+(state.mesFilter===m?" selected":"")+'>'+m+'</option>';
   });
   html += '</select>';
+  html += '<select id="filialSelect">';
+  html += '<option value="todos"'+(state.filialFilter==="todos"?" selected":"")+'>Todas as filiais</option>';
+  distinctFiliais().forEach(f => {
+    html += '<option value="'+f.replace(/"/g,"&quot;")+'"'+(state.filialFilter===f?" selected":"")+'>'+f+'</option>';
+  });
+  html += '</select>';
+  html += '<select id="regionalSelect">';
+  html += '<option value="todos"'+(state.regionalFilter==="todos"?" selected":"")+'>Todas as regionais</option>';
+  distinctRegionais().forEach(r => {
+    html += '<option value="'+r.replace(/"/g,"&quot;")+'"'+(state.regionalFilter===r?" selected":"")+'>'+r+'</option>';
+  });
+  html += '</select>';
+  html += '<select id="cargoSelect">';
+  html += '<option value="todos"'+(state.cargoFilter==="todos"?" selected":"")+'>Todos os cargos</option>';
+  distinctCargos().forEach(c => {
+    html += '<option value="'+c.replace(/"/g,"&quot;")+'"'+(state.cargoFilter===c?" selected":"")+'>'+c+'</option>';
+  });
+  html += '</select>';
   html += '<button class="btn" id="exportBtn">Baixar XLSX</button>';
   html += '</div></div>';
+
+  html += '<div class="meta-info">';
+  html += '<span>Painel atualizado às '+fmtDateTime(state.lastSystemRefresh)+'</span>';
+  html += '<span>Dados alterados pela última vez em '+fmtDateTime(lastDbUpdate())+'</span>';
+  html += '</div>';
 
   const campanhas = distinctCampanhas();
   if(campanhas.length > 0){
@@ -868,20 +983,31 @@ function render(){
     html += '</div>';
   } else {
     html += '<table><thead><tr>';
-    html += '<th>Colaborador</th><th>RE</th><th>CPF</th><th class="num">Pendente</th><th class="num">Pago</th><th class="num">Campanhas pend.</th>';
+    html += thSort('Filial', 'filial');
+    html += thSort('Regional', 'regional');
+    html += thSort('RE', 're');
+    html += thSort('Colaborador', 'nome');
+    html += thSort('Cargo', 'cargo');
+    html += thSort('CPF', 'cpf');
+    html += thSort('Pendente', 'totalPendente', 'num');
+    html += thSort('Pago', 'totalPago', 'num');
+    html += thSort('Campanhas Pendentes', 'qtdPendente', 'num');
     html += '</tr></thead><tbody>';
     list.forEach(e => {
       const isOpen = state.expanded === e.cpf;
       html += '<tr class="emp-row" data-cpf="'+e.cpf+'">';
-      html += '<td class="nome">'+ (e.nome || '(sem nome)') +'<div class="cargo">'+ (e.cargo||'') + (e.filial? ' · '+e.filial : '') +'</div></td>';
+      html += '<td>'+ (e.filial || '—') +'</td>';
+      html += '<td>'+ (e.regional || '—') +'</td>';
       html += '<td>'+ (e.re || '—') +'</td>';
+      html += '<td class="nome">'+ (e.nome || '(sem nome)') +'</td>';
+      html += '<td class="cargo">'+ (e.cargo || '—') +'</td>';
       html += '<td>'+fmtCPF(e.cpf)+'</td>';
       html += '<td class="num">'+ (e.totalPendente>0 ? '<span class="pill pend">'+fmtMoney(e.totalPendente)+'</span>' : fmtMoney(0)) +'</td>';
       html += '<td class="num">'+ (e.totalPago>0 ? '<span class="pill pago">'+fmtMoney(e.totalPago)+'</span>' : fmtMoney(0)) +'</td>';
       html += '<td class="num">'+e.qtdPendente+'</td>';
       html += '</tr>';
       if(isOpen){
-        html += '<tr class="detail-row"><td colspan="6"><div class="detail-inner">';
+        html += '<tr class="detail-row"><td colspan="9"><div class="detail-inner">';
         html += '<table><thead><tr><th>Campanha</th><th>Mês</th><th class="num">Valor</th><th>Status</th></tr></thead><tbody>';
         e.campanhas.sort((a,b)=> (a.mes||"").localeCompare(b.mes||"") || a.campanha.localeCompare(b.campanha))
           .forEach(c => {
@@ -945,6 +1071,30 @@ function attachEvents(){
   if(mesSelect){
     mesSelect.addEventListener("change", (e) => { state.mesFilter = e.target.value; render(); });
   }
+  const filialSelect = document.getElementById("filialSelect");
+  if(filialSelect){
+    filialSelect.addEventListener("change", (e) => { state.filialFilter = e.target.value; render(); });
+  }
+  const regionalSelect = document.getElementById("regionalSelect");
+  if(regionalSelect){
+    regionalSelect.addEventListener("change", (e) => { state.regionalFilter = e.target.value; render(); });
+  }
+  const cargoSelect = document.getElementById("cargoSelect");
+  if(cargoSelect){
+    cargoSelect.addEventListener("change", (e) => { state.cargoFilter = e.target.value; render(); });
+  }
+  document.querySelectorAll("th.sortable").forEach(th => {
+    th.addEventListener("click", () => {
+      const col = th.getAttribute("data-sort");
+      if(state.sortColumn === col){
+        state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        state.sortColumn = col;
+        state.sortDir = "asc";
+      }
+      render();
+    });
+  });
   document.querySelectorAll(".sheet-tab").forEach(tab => {
     tab.addEventListener("click", () => { state.campanhaFilter = tab.getAttribute("data-campanha"); render(); });
   });
