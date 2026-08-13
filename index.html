@@ -279,6 +279,10 @@ body{
 }
 .btn:hover{background:#E4F0EC;}
 .btn:disabled{opacity:0.55; cursor:default;}
+.btn.btn-accent{background:var(--pago-text); color:#fff; border-color:var(--pago-text);}
+.btn.btn-accent:hover{background:#066b41;}
+.btn.danger{color:var(--danger); border-color:#E3B0AC;}
+.btn.danger:hover{background:#FBEAE7;}
 
 .table-scroll{
   overflow-x:auto;
@@ -353,31 +357,54 @@ td.cargo{color:var(--text-mute); font-size:13px;}
 }
 .empty b{color:var(--text-dark);}
 
-.sheet-tabs{
-  display:flex;
-  gap:4px;
-  overflow-x:auto;
-  margin-bottom:14px;
-  border-bottom:1px solid var(--paper-dim);
+.multi-filter{
+  position:relative;
+  display:inline-block;
 }
-.sheet-tab{
-  background:none;
-  border:none;
-  border-bottom:2px solid transparent;
-  color:var(--text-mute);
+.multi-filter summary{
+  list-style:none;
+  padding:7px 10px;
+  border:1px solid var(--paper-dim);
+  border-radius:6px;
   font-family:'IBM Plex Sans', sans-serif;
-  font-size:12.5px;
-  padding:4px 12px 8px;
+  font-size:13px;
+  background:#fff;
+  cursor:pointer;
+  color:var(--text-dark);
+}
+.multi-filter summary::-webkit-details-marker{display:none;}
+.multi-filter summary::after{content:" ▾"; color:var(--text-mute); font-size:11px;}
+.multi-filter[open] summary::after{content:" ▴";}
+.multi-filter[open] summary{border-color:var(--brand-accent);}
+.multi-filter-options{
+  position:absolute;
+  top:calc(100% + 4px);
+  left:0;
+  z-index:20;
+  background:#fff;
+  border:1px solid var(--paper-dim);
+  border-radius:8px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.18);
+  padding:8px;
+  min-width:190px;
+  max-height:240px;
+  overflow-y:auto;
+}
+.multi-filter-options label{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:5px 6px;
+  font-size:13px;
+  border-radius:4px;
   cursor:pointer;
   white-space:nowrap;
-  flex-shrink:0;
-  margin-bottom:-1px;
 }
-.sheet-tab:hover{color:var(--text-dark);}
-.sheet-tab.active{
-  color:var(--text-dark);
-  font-weight:600;
-  border-bottom-color:var(--brand-accent);
+.multi-filter-options label:hover{background:var(--paper-dim);}
+.multi-filter-empty{
+  font-size:12.5px;
+  color:var(--text-mute);
+  padding:5px 6px;
 }
 
 .loading{
@@ -417,13 +444,11 @@ let state = {
   error: null,
   records: {},     // map key -> record, alimentado pelo Supabase
   search: "",
-  statusFilter: "todos",
   expanded: null,
-  mesFilter: "todos",
-  campanhaFilter: "todos",
-  filialFilter: "todos",
-  regionalFilter: "todos",
-  cargoFilter: "todos",
+  // filtros aplicados (usados pelo aggregate()) e filtros em edição (ainda não
+  // aplicados, controlados pelas caixas de marcar até clicar em "Aplicar").
+  filters: { status: [], mes: [], filial: [], regional: [], cargo: [], campanha: [] },
+  pendingFilters: { status: [], mes: [], filial: [], regional: [], cargo: [], campanha: [] },
   sortColumn: null,
   sortDir: "asc",
   lastSystemRefresh: null,
@@ -700,21 +725,22 @@ function sortList(list){
 
 function aggregate(){
   const byCpf = {};
+  const f = state.filters;
   let baseRecords = Object.values(state.records);
-  if(state.mesFilter !== "todos"){
-    baseRecords = baseRecords.filter(r => r.mes === state.mesFilter);
+  if(f.mes.length > 0){
+    baseRecords = baseRecords.filter(r => f.mes.includes(r.mes));
   }
-  if(state.campanhaFilter !== "todos"){
-    baseRecords = baseRecords.filter(r => r.campanha === state.campanhaFilter);
+  if(f.campanha.length > 0){
+    baseRecords = baseRecords.filter(r => f.campanha.includes(r.campanha));
   }
-  if(state.filialFilter !== "todos"){
-    baseRecords = baseRecords.filter(r => r.filial === state.filialFilter);
+  if(f.filial.length > 0){
+    baseRecords = baseRecords.filter(r => f.filial.includes(r.filial));
   }
-  if(state.regionalFilter !== "todos"){
-    baseRecords = baseRecords.filter(r => r.regional === state.regionalFilter);
+  if(f.regional.length > 0){
+    baseRecords = baseRecords.filter(r => f.regional.includes(r.regional));
   }
-  if(state.cargoFilter !== "todos"){
-    baseRecords = baseRecords.filter(r => r.cargo === state.cargoFilter);
+  if(f.cargo.length > 0){
+    baseRecords = baseRecords.filter(r => f.cargo.includes(r.cargo));
   }
   baseRecords.forEach(r => {
     if(!byCpf[r.cpf]){
@@ -749,10 +775,9 @@ function aggregate(){
       normText(e.re).includes(q)
     );
   }
-  if(state.statusFilter === "pendente"){
-    list = list.filter(e => e.qtdPendente > 0);
-  } else if(state.statusFilter === "sem_pendencia"){
-    list = list.filter(e => e.qtdPendente === 0);
+  if(f.status.length === 1){
+    if(f.status[0] === "pendente") list = list.filter(e => e.qtdPendente > 0);
+    else if(f.status[0] === "sem_pendencia") list = list.filter(e => e.qtdPendente === 0);
   }
 
   sortList(list);
@@ -763,6 +788,45 @@ function thSort(label, col, extraClass){
   const active = state.sortColumn === col;
   const arrow = active ? (state.sortDir === "asc" ? " ▲" : " ▼") : "";
   return '<th class="sortable'+(extraClass?' '+extraClass:'')+(active?' active':'')+'" data-sort="'+col+'">'+label+arrow+'</th>';
+}
+
+function renderMultiFilter(key, label, options){
+  // options: array de {value, label} OU array de strings (nesse caso value===label)
+  const opts = options.map(o => (typeof o === "string") ? {value:o, label:o} : o);
+  const selected = state.pendingFilters[key];
+  const countLabel = selected.length > 0 ? label + " (" + selected.length + ")" : label;
+  let html = '<details class="multi-filter" data-filter-key="'+key+'" data-label="'+label+'">';
+  html += '<summary>'+countLabel+'</summary>';
+  html += '<div class="multi-filter-options">';
+  if(opts.length === 0){
+    html += '<div class="multi-filter-empty">Nenhuma opção disponível</div>';
+  }
+  opts.forEach(opt => {
+    const safeVal = String(opt.value).replace(/"/g,"&quot;");
+    const checked = selected.includes(opt.value) ? " checked" : "";
+    html += '<label><input type="checkbox" data-filter-key="'+key+'" value="'+safeVal+'"'+checked+'> '+opt.label+'</label>';
+  });
+  html += '</div></details>';
+  return html;
+}
+
+function applyFilters(){
+  state.filters = {
+    status: state.pendingFilters.status.slice(),
+    mes: state.pendingFilters.mes.slice(),
+    filial: state.pendingFilters.filial.slice(),
+    regional: state.pendingFilters.regional.slice(),
+    cargo: state.pendingFilters.cargo.slice(),
+    campanha: state.pendingFilters.campanha.slice(),
+  };
+  render();
+}
+
+function clearFilters(){
+  state.filters = { status: [], mes: [], filial: [], regional: [], cargo: [], campanha: [] };
+  state.pendingFilters = { status: [], mes: [], filial: [], regional: [], cargo: [], campanha: [] };
+  state.search = "";
+  render();
 }
 
 function fmtMoney(v){
@@ -889,6 +953,7 @@ function render(){
   const scrollY = window.scrollY;
   const searchWasFocused = document.activeElement && document.activeElement.id === "searchInput";
   const searchSelStart = searchWasFocused ? document.activeElement.selectionStart : null;
+  const openFilterKeys = Array.from(document.querySelectorAll("details.multi-filter[open]")).map(d => d.getAttribute("data-filter-key"));
 
   const list = aggregate();
   const totalPendenteGeral = list.reduce((s,e)=>s+e.totalPendente,0);
@@ -928,35 +993,14 @@ function render(){
   html += '<h2>Saldo por colaborador</h2>';
   html += '<div class="controls">';
   html += '<input type="text" id="searchInput" placeholder="Buscar por nome, CPF ou RE" value="'+state.search.replace(/"/g,'&quot;')+'">';
-  html += '<select id="statusSelect">';
-  html += '<option value="todos"'+(state.statusFilter==="todos"?" selected":"")+'>Todos</option>';
-  html += '<option value="pendente"'+(state.statusFilter==="pendente"?" selected":"")+'>Com pendência</option>';
-  html += '<option value="sem_pendencia"'+(state.statusFilter==="sem_pendencia"?" selected":"")+'>Sem pendência</option>';
-  html += '</select>';
-  html += '<select id="mesSelect">';
-  html += '<option value="todos"'+(state.mesFilter==="todos"?" selected":"")+'>Todos os meses</option>';
-  distinctMonths().forEach(m => {
-    html += '<option value="'+m.replace(/"/g,"&quot;")+'"'+(state.mesFilter===m?" selected":"")+'>'+m+'</option>';
-  });
-  html += '</select>';
-  html += '<select id="filialSelect">';
-  html += '<option value="todos"'+(state.filialFilter==="todos"?" selected":"")+'>Todas as filiais</option>';
-  distinctFiliais().forEach(f => {
-    html += '<option value="'+f.replace(/"/g,"&quot;")+'"'+(state.filialFilter===f?" selected":"")+'>'+f+'</option>';
-  });
-  html += '</select>';
-  html += '<select id="regionalSelect">';
-  html += '<option value="todos"'+(state.regionalFilter==="todos"?" selected":"")+'>Todas as regionais</option>';
-  distinctRegionais().forEach(r => {
-    html += '<option value="'+r.replace(/"/g,"&quot;")+'"'+(state.regionalFilter===r?" selected":"")+'>'+r+'</option>';
-  });
-  html += '</select>';
-  html += '<select id="cargoSelect">';
-  html += '<option value="todos"'+(state.cargoFilter==="todos"?" selected":"")+'>Todos os cargos</option>';
-  distinctCargos().forEach(c => {
-    html += '<option value="'+c.replace(/"/g,"&quot;")+'"'+(state.cargoFilter===c?" selected":"")+'>'+c+'</option>';
-  });
-  html += '</select>';
+  html += renderMultiFilter('status', 'Status', [{value:'pendente',label:'Com pendência'},{value:'sem_pendencia',label:'Sem pendência'}]);
+  html += renderMultiFilter('mes', 'Mês', distinctMonths());
+  html += renderMultiFilter('filial', 'Filial', distinctFiliais());
+  html += renderMultiFilter('regional', 'Regional', distinctRegionais());
+  html += renderMultiFilter('cargo', 'Cargo', distinctCargos());
+  html += renderMultiFilter('campanha', 'Campanha', distinctCampanhas());
+  html += '<button class="btn btn-accent" id="applyFiltersBtn">Aplicar</button>';
+  html += '<button class="btn danger" id="clearFiltersBtn">Limpar filtros</button>';
   html += '<button class="btn" id="exportBtn">Baixar XLSX</button>';
   html += '</div></div>';
 
@@ -964,16 +1008,6 @@ function render(){
   html += '<span>Painel atualizado às '+fmtDateTime(state.lastSystemRefresh)+'</span>';
   html += '<span>Dados alterados pela última vez em '+fmtDateTime(lastDbUpdate())+'</span>';
   html += '</div>';
-
-  const campanhas = distinctCampanhas();
-  if(campanhas.length > 0){
-    html += '<div class="sheet-tabs">';
-    html += '<button class="sheet-tab'+(state.campanhaFilter==="todos"?" active":"")+'" data-campanha="todos">Todas as campanhas</button>';
-    campanhas.forEach(c => {
-      html += '<button class="sheet-tab'+(state.campanhaFilter===c?" active":"")+'" data-campanha="'+c.replace(/"/g,"&quot;")+'">'+c+'</button>';
-    });
-    html += '</div>';
-  }
   html += '</div>';
 
   if(list.length === 0){
@@ -1036,6 +1070,10 @@ function render(){
       newSearchInput.setSelectionRange(searchSelStart, searchSelStart);
     }
   }
+  openFilterKeys.forEach(key => {
+    const d = document.querySelector('details.multi-filter[data-filter-key="'+key+'"]');
+    if(d) d.setAttribute("open", "");
+  });
   window.scrollTo(scrollX, scrollY);
 }
 
@@ -1068,25 +1106,32 @@ function attachEvents(){
   if(searchInput){
     searchInput.addEventListener("input", (e) => { state.search = e.target.value; render(); });
   }
-  const statusSelect = document.getElementById("statusSelect");
-  if(statusSelect){
-    statusSelect.addEventListener("change", (e) => { state.statusFilter = e.target.value; render(); });
+  document.querySelectorAll(".multi-filter-options input[type=checkbox]").forEach(cb => {
+    cb.addEventListener("change", (e) => {
+      const key = e.target.getAttribute("data-filter-key");
+      const val = e.target.value;
+      const arr = state.pendingFilters[key];
+      const idx = arr.indexOf(val);
+      if(e.target.checked){
+        if(idx === -1) arr.push(val);
+      } else if(idx !== -1){
+        arr.splice(idx, 1);
+      }
+      // Atualiza só o texto do resumo, sem re-renderizar (isso fecharia o
+      // <details> no meio da seleção de várias caixas).
+      const details = e.target.closest("details.multi-filter");
+      const summary = details.querySelector("summary");
+      const label = details.getAttribute("data-label");
+      summary.textContent = arr.length > 0 ? label + " (" + arr.length + ")" : label;
+    });
+  });
+  const applyFiltersBtn = document.getElementById("applyFiltersBtn");
+  if(applyFiltersBtn){
+    applyFiltersBtn.addEventListener("click", applyFilters);
   }
-  const mesSelect = document.getElementById("mesSelect");
-  if(mesSelect){
-    mesSelect.addEventListener("change", (e) => { state.mesFilter = e.target.value; render(); });
-  }
-  const filialSelect = document.getElementById("filialSelect");
-  if(filialSelect){
-    filialSelect.addEventListener("change", (e) => { state.filialFilter = e.target.value; render(); });
-  }
-  const regionalSelect = document.getElementById("regionalSelect");
-  if(regionalSelect){
-    regionalSelect.addEventListener("change", (e) => { state.regionalFilter = e.target.value; render(); });
-  }
-  const cargoSelect = document.getElementById("cargoSelect");
-  if(cargoSelect){
-    cargoSelect.addEventListener("change", (e) => { state.cargoFilter = e.target.value; render(); });
+  const clearFiltersBtn = document.getElementById("clearFiltersBtn");
+  if(clearFiltersBtn){
+    clearFiltersBtn.addEventListener("click", clearFilters);
   }
   document.querySelectorAll("th.sortable").forEach(th => {
     th.addEventListener("click", () => {
@@ -1099,9 +1144,6 @@ function attachEvents(){
       }
       render();
     });
-  });
-  document.querySelectorAll(".sheet-tab").forEach(tab => {
-    tab.addEventListener("click", () => { state.campanhaFilter = tab.getAttribute("data-campanha"); render(); });
   });
   const exportBtn = document.getElementById("exportBtn");
   if(exportBtn){
