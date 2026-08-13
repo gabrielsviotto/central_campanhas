@@ -34,7 +34,7 @@ body{
   min-height:100vh;
 }
 .app{
-  max-width:1080px;
+  max-width:1400px;
   margin:0 auto;
   padding:32px 20px 60px;
 }
@@ -280,6 +280,9 @@ body{
 .btn:hover{background:#E4F0EC;}
 .btn:disabled{opacity:0.55; cursor:default;}
 
+.table-scroll{
+  overflow-x:auto;
+}
 table{
   width:100%;
   border-collapse:collapse;
@@ -982,6 +985,7 @@ function render(){
     }
     html += '</div>';
   } else {
+    html += '<div class="table-scroll">';
     html += '<table><thead><tr>';
     html += thSort('Filial', 'filial');
     html += thSort('Regional', 'regional');
@@ -1017,6 +1021,7 @@ function render(){
       }
     });
     html += '</tbody></table>';
+    html += '</div>';
   }
 
   html += '</div>';
