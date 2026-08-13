@@ -466,6 +466,10 @@ function normText(s){
     .toLowerCase().trim().replace(/\s+/g," ");
 }
 
+function naturalCompare(a, b){
+  return String(a||"").localeCompare(String(b||""), undefined, {numeric:true, sensitivity:"base"});
+}
+
 function normalizeStatus(v){
   const s = normText(v);
   if(s.startsWith("pago")) return "Pago";
@@ -655,7 +659,7 @@ function distinctMonths(){
     if(ka != null && kb != null) return ka - kb;
     if(ka != null) return -1;
     if(kb != null) return 1;
-    return String(a).localeCompare(String(b));
+    return naturalCompare(a, b);
   });
   return arr;
 }
@@ -663,25 +667,25 @@ function distinctMonths(){
 function distinctCampanhas(){
   const set = new Set();
   Object.values(state.records).forEach(r => { if(r.campanha) set.add(r.campanha); });
-  return Array.from(set).sort((a,b) => a.localeCompare(b));
+  return Array.from(set).sort(naturalCompare);
 }
 
 function distinctFiliais(){
   const set = new Set();
   Object.values(state.records).forEach(r => { if(r.filial) set.add(r.filial); });
-  return Array.from(set).sort((a,b) => a.localeCompare(b));
+  return Array.from(set).sort(naturalCompare);
 }
 
 function distinctRegionais(){
   const set = new Set();
   Object.values(state.records).forEach(r => { if(r.regional) set.add(r.regional); });
-  return Array.from(set).sort((a,b) => a.localeCompare(b));
+  return Array.from(set).sort(naturalCompare);
 }
 
 function distinctCargos(){
   const set = new Set();
   Object.values(state.records).forEach(r => { if(r.cargo) set.add(r.cargo); });
-  return Array.from(set).sort((a,b) => a.localeCompare(b));
+  return Array.from(set).sort(naturalCompare);
 }
 
 function lastDbUpdate(){
@@ -710,14 +714,14 @@ const SORT_ACCESSORS = {
 function sortList(list){
   const col = state.sortColumn;
   if(!col || !SORT_ACCESSORS[col]){
-    list.sort((a,b) => b.totalPendente - a.totalPendente || a.nome.localeCompare(b.nome));
+    list.sort((a,b) => b.totalPendente - a.totalPendente || naturalCompare(a.nome, b.nome));
     return list;
   }
   const acc = SORT_ACCESSORS[col];
   const dir = state.sortDir === "desc" ? -1 : 1;
   list.sort((a,b) => {
     const va = acc(a), vb = acc(b);
-    const cmp = (typeof va === "number" && typeof vb === "number") ? (va - vb) : String(va).localeCompare(String(vb));
+    const cmp = (typeof va === "number" && typeof vb === "number") ? (va - vb) : naturalCompare(va, vb);
     return cmp * dir;
   });
   return list;
@@ -795,7 +799,7 @@ function renderMultiFilter(key, label, options){
   const opts = options.map(o => (typeof o === "string") ? {value:o, label:o} : o);
   const selected = state.pendingFilters[key];
   const countLabel = selected.length > 0 ? label + " (" + selected.length + ")" : label;
-  let html = '<details class="multi-filter" data-filter-key="'+key+'" data-label="'+label+'">';
+  let html = '<details class="multi-filter" name="filtro-grupo" data-filter-key="'+key+'" data-label="'+label+'">';
   html += '<summary>'+countLabel+'</summary>';
   html += '<div class="multi-filter-options">';
   if(opts.length === 0){
@@ -870,7 +874,7 @@ function exportXLSX(){
       if(r.statusPremiacao === "Pendente"){ e.totalPendente += r.premiacao; e.qtdPendente++; e.listaPendentes.push(rotulo); }
       else if(r.statusPremiacao === "Pago"){ e.totalPago += r.premiacao; e.qtdPago++; e.listaPagas.push(rotulo); }
     });
-    const saldoList = Object.values(byCpf).sort((a,b) => b.totalPendente - a.totalPendente || a.nome.localeCompare(b.nome));
+    const saldoList = Object.values(byCpf).sort((a,b) => b.totalPendente - a.totalPendente || naturalCompare(a.nome, b.nome));
 
     const saldoHeader = ["CPF","RE (Matrícula)","Nome","Cargo","Filial","Regional","Saldo Pendente","Total Pago","Qtd. Campanhas Pendentes","Qtd. Campanhas Pagas","Campanhas Pendentes","Campanhas Pagas"];
     const saldoRows = saldoList.map(e => [
@@ -885,7 +889,7 @@ function exportXLSX(){
     // Aba 2: detalhe, uma linha por campanha
     const detHeader = ["Filial","Regional","RE","Nome","Cargo","CPF","Status Filial","Status Colaborador","Premiação","Mês","Descrição Campanha","Status Premiação"];
     const detRows = allRecords
-      .sort((a,b) => a.nome.localeCompare(b.nome) || (a.mes||"").localeCompare(b.mes||""))
+      .sort((a,b) => naturalCompare(a.nome, b.nome) || naturalCompare(a.mes, b.mes))
       .map(r => [
         r.filial, r.regional, r.re, r.nome, r.cargo, r.cpf,
         r.statusFilial, r.statusColaborador, Number(r.premiacao.toFixed(2)),
@@ -1047,7 +1051,7 @@ function render(){
       if(isOpen){
         html += '<tr class="detail-row"><td colspan="9"><div class="detail-inner">';
         html += '<table><thead><tr><th>Campanha</th><th>Mês</th><th class="num">Valor</th><th>Status</th></tr></thead><tbody>';
-        e.campanhas.sort((a,b)=> (a.mes||"").localeCompare(b.mes||"") || a.campanha.localeCompare(b.campanha))
+        e.campanhas.sort((a,b)=> naturalCompare(a.mes, b.mes) || naturalCompare(a.campanha, b.campanha))
           .forEach(c => {
             html += '<tr><td>'+c.campanha+'</td><td>'+c.mes+'</td><td class="num">'+fmtMoney(c.premiacao)+'</td><td><span class="pill '+(c.status==="Pago"?"pago":"pend")+'">'+c.status+'</span></td></tr>';
           });
