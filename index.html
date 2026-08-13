@@ -679,17 +679,19 @@ function mesSortKey(mes){
   return null;
 }
 
+function compareMes(a, b){
+  const ka = mesSortKey(a), kb = mesSortKey(b);
+  if(ka != null && kb != null) return ka - kb;
+  if(ka != null) return -1;
+  if(kb != null) return 1;
+  return naturalCompare(a, b);
+}
+
 function distinctMonths(){
   const set = new Set();
   Object.values(state.records).forEach(r => { if(r.mes) set.add(r.mes); });
   const arr = Array.from(set);
-  arr.sort((a,b) => {
-    const ka = mesSortKey(a), kb = mesSortKey(b);
-    if(ka != null && kb != null) return ka - kb;
-    if(ka != null) return -1;
-    if(kb != null) return 1;
-    return naturalCompare(a, b);
-  });
+  arr.sort(compareMes);
   return arr;
 }
 
@@ -1094,7 +1096,7 @@ function render(){
       if(isOpen){
         html += '<tr class="detail-row"><td colspan="9"><div class="detail-inner">';
         html += '<table><thead><tr><th>Campanha</th><th>Mês</th><th class="num">Valor</th><th>Status</th></tr></thead><tbody>';
-        e.campanhas.sort((a,b)=> naturalCompare(a.mes, b.mes) || naturalCompare(a.campanha, b.campanha))
+        e.campanhas.sort((a,b)=> compareMes(a.mes, b.mes) || naturalCompare(a.campanha, b.campanha))
           .forEach(c => {
             html += '<tr><td>'+c.campanha+'</td><td>'+c.mes+'</td><td class="num">'+fmtMoney(c.premiacao)+'</td><td><span class="pill '+(c.status==="Pago"?"pago":"pend")+'">'+c.status+'</span></td></tr>';
           });
