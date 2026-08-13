@@ -987,6 +987,11 @@ function render(){
   const searchWasFocused = document.activeElement && document.activeElement.id === "searchInput";
   const searchSelStart = searchWasFocused ? document.activeElement.selectionStart : null;
   const openFilterKeys = Array.from(document.querySelectorAll("details.multi-filter[open]")).map(d => d.getAttribute("data-filter-key"));
+  const filterScrollTops = {};
+  openFilterKeys.forEach(key => {
+    const optionsEl = document.querySelector('details.multi-filter[data-filter-key="'+key+'"] .multi-filter-options');
+    if(optionsEl) filterScrollTops[key] = optionsEl.scrollTop;
+  });
 
   const list = aggregate();
   const totalPendenteGeral = list.reduce((s,e)=>s+e.totalPendente,0);
@@ -1114,7 +1119,11 @@ function render(){
   }
   openFilterKeys.forEach(key => {
     const d = document.querySelector('details.multi-filter[data-filter-key="'+key+'"]');
-    if(d) d.setAttribute("open", "");
+    if(d){
+      d.setAttribute("open", "");
+      const optionsEl = d.querySelector(".multi-filter-options");
+      if(optionsEl && filterScrollTops[key] != null) optionsEl.scrollTop = filterScrollTops[key];
+    }
   });
   window.scrollTo(scrollX, scrollY);
 }
