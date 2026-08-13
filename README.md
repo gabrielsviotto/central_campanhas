@@ -1,37 +1,46 @@
 # Central de Campanhas
 
-Código HTML para gerar a planilha de pagamentos.
+Painel para a equipe da Novo Mundo acompanhar o saldo pendente/pago por colaborador em campanhas comerciais.
 
-Painel estático (`index.html`) que mostra o saldo pendente/pago por colaborador, lendo os dados direto do Supabase. Não há mais importação de planilha por aqui: outro processo (ou você, pelo Table Editor do Supabase) é quem alimenta a tabela. A tela atualiza sozinha via Supabase Realtime assim que os dados mudam. Hospedado no Vercel: https://central-campanhas-ten.vercel.app
+- **App**: `index.html` — página estática (sem build), lê os dados direto do Supabase e atualiza sozinha via Realtime.
+- **No ar**: https://central-campanhas-ten.vercel.app (deploy automático a cada push no branch `main` deste repo).
+- **Banco**: projeto Supabase `gabrielsviotto's Project` (`https://mptpyvgigepvsmylnnqu.supabase.co`), tabela `campanhas`.
+- **Origem dos dados**: planilha Google Sheets "Campanhas Julho" → script do Google Apps Script ("Sync Campanhas Sheets -> Supabase") → upsert na tabela `campanhas`, a cada 5 minutos automaticamente.
 
-## 1. Configurar o Supabase
+## Acesso
 
-1. No SQL Editor do seu projeto Supabase, rode [`supabase-schema.sql`](supabase-schema.sql). Isso cria a tabela `campanhas` (uma linha por CPF + campanha + mês), a política de RLS que só libera leitura para usuários autenticados, e habilita o Realtime nessa tabela.
-2. Em **Authentication → Providers**, deixe só *Email* habilitado e **desative "Allow new users to sign up"** — os usuários são criados manualmente, não por autocadastro.
-3. Em **Authentication → Users**, clique em **Invite user** para cada pessoa que vai acessar o painel.
-4. Em **Project Settings → API**, copie a **Project URL** e a **anon public key**.
+Login obrigatório (Supabase Auth, e-mail/senha). Autocadastro está desativado — para dar acesso a alguém:
 
-## 2. Preencher as credenciais no `index.html`
+1. Supabase → **Authentication → Users → Add user → Send invitation** (só pede o e-mail da pessoa).
+2. A pessoa recebe o link, entra automaticamente (sem senha ainda).
+3. Ela deve clicar em **"Definir senha"** (ao lado do botão "Sair", no topo do site) para conseguir logar de novo depois.
 
-Edite as constantes no início do `<script>`:
+## Estrutura do painel
 
-```js
-const SUPABASE_URL = "https://SEU-PROJETO.supabase.co";
-const SUPABASE_ANON_KEY = "SUA_ANON_KEY_AQUI";
-```
+- Colunas: Filial, Regional, RE, Colaborador, Cargo, CPF, Pendente, Pago, Campanhas Pendentes — todas ordenáveis clicando no cabeçalho.
+- Filtros de Status, Mês, Filial, Regional e Cargo: seleção múltipla (checkboxes), só aplicam ao clicar em **"Aplicar"**. Busca por nome/CPF/RE é ao vivo. **"Limpar filtros"** reseta tudo, incluindo a busca.
+- Filtro de Campanha: abas de seleção única (estilo antigo), aplica na hora.
+- Duas datas no topo do painel: quando a tela foi atualizada (lado do navegador) e quando os dados mudaram pela última vez no banco (`atualizado_em` mais recente).
+- Botão "Baixar XLSX" exporta um `.xlsx` com o que está na tela (aba "Saldo por Colaborador" + aba "Detalhe Campanhas").
 
-## 3. Alimentando os dados
+## Reconfigurar do zero (se precisar recriar o projeto Supabase)
 
-Este app é **somente leitura**. Para os dados aparecerem no painel, insira/atualize linhas na tabela `campanhas` por fora dele — pelo Table Editor do Supabase, por um script, ou por qualquer outro processo que tenha acesso ao banco (idealmente usando a `service_role key`, que ignora as políticas de RLS). Colunas esperadas:
+1. Rode [`supabase-schema.sql`](supabase-schema.sql) no SQL Editor — cria a tabela `campanhas`, a política de RLS (só `authenticated` lê) e habilita o Realtime.
+2. Em **Authentication → Providers**, deixe só *Email* habilitado e desative "Allow new users to sign up".
+3. Em **Project Settings → API Keys**, copie a **Project URL** e a **anon/publishable key**, e cole nas constantes `SUPABASE_URL`/`SUPABASE_ANON_KEY` no topo do `<script>` do `index.html`.
+4. Configure a sincronização da planilha (veja abaixo).
 
-`cpf, nome, cargo, filial, regional, re, status_filial, status_colaborador, campanha, mes, premiacao, status_premiacao`
+## Sincronização da planilha (Google Apps Script)
 
-A chave primária é `(cpf, campanha, mes)` — inserir uma linha com essa combinação já existente deve ser feito como `update` (ou `upsert`) para atualizar o registro.
+O script vive dentro do Google Apps Script, associado à planilha via `SPREADSHEET_ID` (não é um script "container-bound"). Ele:
 
-## 4. Deploy no Vercel
+- Lê a aba `Página1` da planilha, casando pelos cabeçalhos: `Filial, Regional, RE, Nome, Cargo, CPF, Status Filial, Status Colaborador, Premiação, Mês, Descrição Campanha, Status Premiação`.
+- **Consolida campanhas semanais**: se o mesmo CPF + campanha + mês aparecer em várias linhas (ex.: lançamento semanal), soma os valores de premiação numa única linha e só marca "Pago" se **todas** as ocorrências já estiverem pagas.
+- Faz upsert na tabela `campanhas` usando a `service_role key` **legada** (formato JWT, começa com `eyJ`) — a chave nova (`sb_secret_...`) é bloqueada pela própria Supabase para chamadas fora do SDK oficial deles ("Forbidden use of secret API key in browser").
+- Roda sozinho a cada 5 minutos (gatilho criado por `configurarGatilho()`), e também pode ser disparado manualmente (`syncToSupabase()`).
+- A chave fica em **Configurações do projeto → Propriedades do script**, propriedade `SUPABASE_SECRET_KEY` (nunca no código-fonte).
 
-Site 100% estático (sem build, sem backend próprio). Qualquer push no branch `main` do repositório [`gabrielsviotto/central_campanhas`](https://github.com/gabrielsviotto/central_campanhas) já reflete automaticamente no deploy do Vercel.
+## Observações
 
-## Uso
-
-Login com a conta cadastrada, busque por nome/CPF/RE, filtre por status/mês/campanha (abas fixas no topo), expanda um colaborador para ver o detalhe por campanha, e exporte um `.xlsx` consolidado com o que está na tela.
+- `Arquivos_Teste/` (planilhas reais de exemplo) e `.claude/` ficam fora do controle de versão (`.gitignore`).
+- Sem controle de acesso por linha: qualquer usuário autenticado vê todos os dados da tabela `campanhas` (não há RLS por filial/regional).
