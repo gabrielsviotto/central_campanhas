@@ -476,8 +476,8 @@ let state = {
   // filtros aplicados (usados pelo aggregate()) e filtros em edição (ainda não
   // aplicados, controlados pelas caixas de marcar até clicar em "Aplicar").
   // Campanha fica de fora: continua no formato antigo de abas (seleção única).
-  filters: { status: [], mes: [], filial: [], regional: [], cargo: [] },
-  pendingFilters: { status: [], mes: [], filial: [], regional: [], cargo: [] },
+  filters: { status: [], mes: [], filial: [], regional: [], cargo: [], observacao: [] },
+  pendingFilters: { status: [], mes: [], filial: [], regional: [], cargo: [], observacao: [] },
   campanhaFilter: "todos",
   sortColumn: null,
   sortDir: "asc",
@@ -784,7 +784,7 @@ function aggregate(){
       byCpf[r.cpf] = {
         cpf: r.cpf, nome: r.nome, cargo: r.cargo, filial: r.filial, regional: r.regional, re: r.re,
         totalPendente:0, totalPago:0, qtdPendente:0, qtdPago:0,
-        campanhas: [], _latest: 0,
+        campanhas: [], _latest: 0, temObservacao: false,
       };
     }
     const e = byCpf[r.cpf];
@@ -799,6 +799,7 @@ function aggregate(){
     e.campanhas.push({campanha: r.campanha, mes: r.mes, premiacao: r.premiacao, status: r.statusPremiacao, observacao: r.observacao});
     if(r.statusPremiacao === "Pendente"){ e.totalPendente += r.premiacao; e.qtdPendente++; }
     else if(r.statusPremiacao === "Pago"){ e.totalPago += r.premiacao; e.qtdPago++; }
+    if(r.observacao) e.temObservacao = true;
   });
   let list = Object.values(byCpf);
 
@@ -815,6 +816,10 @@ function aggregate(){
   if(f.status.length === 1){
     if(f.status[0] === "pendente") list = list.filter(e => e.qtdPendente > 0);
     else if(f.status[0] === "sem_pendencia") list = list.filter(e => e.qtdPendente === 0);
+  }
+  if(f.observacao.length === 1){
+    if(f.observacao[0] === "com") list = list.filter(e => e.temObservacao);
+    else if(f.observacao[0] === "sem") list = list.filter(e => !e.temObservacao);
   }
 
   sortList(list);
@@ -854,13 +859,14 @@ function applyFilters(){
     filial: state.pendingFilters.filial.slice(),
     regional: state.pendingFilters.regional.slice(),
     cargo: state.pendingFilters.cargo.slice(),
+    observacao: state.pendingFilters.observacao.slice(),
   };
   render();
 }
 
 function clearFilters(){
-  state.filters = { status: [], mes: [], filial: [], regional: [], cargo: [] };
-  state.pendingFilters = { status: [], mes: [], filial: [], regional: [], cargo: [] };
+  state.filters = { status: [], mes: [], filial: [], regional: [], cargo: [], observacao: [] };
+  state.pendingFilters = { status: [], mes: [], filial: [], regional: [], cargo: [], observacao: [] };
   state.campanhaFilter = "todos";
   state.search = "";
   render();
@@ -1036,6 +1042,7 @@ function render(){
   html += '<div class="controls">';
   html += '<input type="text" id="searchInput" placeholder="Buscar por nome, CPF ou RE" value="'+state.search.replace(/"/g,'&quot;')+'">';
   html += renderMultiFilter('status', 'Status', [{value:'pendente',label:'Com pendência'},{value:'sem_pendencia',label:'Sem pendência'}]);
+  html += renderMultiFilter('observacao', 'Observação', [{value:'com',label:'Com observação'},{value:'sem',label:'Sem observação'}]);
   html += renderMultiFilter('mes', 'Mês', distinctMonths());
   html += renderMultiFilter('filial', 'Filial', distinctFiliais());
   html += renderMultiFilter('regional', 'Regional', distinctRegionais());
