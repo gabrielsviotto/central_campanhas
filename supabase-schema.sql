@@ -19,6 +19,7 @@ create table if not exists campanhas (
   mes text not null,
   premiacao numeric not null default 0,
   status_premiacao text not null default 'Pendente',
+  observacao text,
   atualizado_em timestamptz not null default now(),
   primary key (cpf, campanha, mes)
 );

@@ -349,6 +349,7 @@ td.cargo{color:var(--text-mute); font-size:13px;}
 .detail-inner thead th{border-bottom:1px solid var(--paper-dim); font-size:10px;}
 .detail-inner tbody tr{cursor:default; border-bottom:1px solid var(--paper-line);}
 .detail-inner tbody tr:hover{background:transparent;}
+.obs-note{font-size:11.5px; color:var(--text-mute); font-style:italic; margin-top:2px;}
 
 .empty{
   text-align:center;
@@ -627,6 +628,7 @@ async function fetchRecords(){
       mes: row.mes || "",
       premiacao: Number(row.premiacao) || 0,
       statusPremiacao: normalizeStatus(row.status_premiacao),
+      observacao: row.observacao || "",
       atualizadoEm: row.atualizado_em ? new Date(row.atualizado_em).getTime() : Date.now(),
     };
     records[recordKey(record)] = record;
@@ -794,7 +796,7 @@ function aggregate(){
       e.regional = r.regional || e.regional;
       e.re = r.re || e.re;
     }
-    e.campanhas.push({campanha: r.campanha, mes: r.mes, premiacao: r.premiacao, status: r.statusPremiacao});
+    e.campanhas.push({campanha: r.campanha, mes: r.mes, premiacao: r.premiacao, status: r.statusPremiacao, observacao: r.observacao});
     if(r.statusPremiacao === "Pendente"){ e.totalPendente += r.premiacao; e.qtdPendente++; }
     else if(r.statusPremiacao === "Pago"){ e.totalPago += r.premiacao; e.qtdPago++; }
   });
@@ -918,16 +920,16 @@ function exportXLSX(){
     wsSaldo["!cols"] = [{wch:16},{wch:14},{wch:28},{wch:18},{wch:14},{wch:14},{wch:16},{wch:14},{wch:14},{wch:14},{wch:42},{wch:42}];
 
     // Aba 2: detalhe, uma linha por campanha
-    const detHeader = ["Filial","Regional","RE","Nome","Cargo","CPF","Status Filial","Status Colaborador","Premiação","Mês","Descrição Campanha","Status Premiação"];
+    const detHeader = ["Filial","Regional","RE","Nome","Cargo","CPF","Status Filial","Status Colaborador","Premiação","Mês","Descrição Campanha","Status Premiação","Observação"];
     const detRows = allRecords
       .sort((a,b) => naturalCompare(a.nome, b.nome) || naturalCompare(a.mes, b.mes))
       .map(r => [
         r.filial, r.regional, r.re, r.nome, r.cargo, r.cpf,
         r.statusFilial, r.statusColaborador, Number(r.premiacao.toFixed(2)),
-        r.mes, r.campanha, r.statusPremiacao
+        r.mes, r.campanha, r.statusPremiacao, r.observacao
       ]);
     const wsDet = XLSX.utils.aoa_to_sheet([detHeader, ...detRows]);
-    wsDet["!cols"] = [{wch:10},{wch:12},{wch:8},{wch:28},{wch:18},{wch:16},{wch:14},{wch:16},{wch:12},{wch:10},{wch:26},{wch:16}];
+    wsDet["!cols"] = [{wch:10},{wch:12},{wch:8},{wch:28},{wch:18},{wch:16},{wch:14},{wch:16},{wch:12},{wch:10},{wch:26},{wch:16},{wch:28}];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, wsSaldo, "Saldo por Colaborador");
@@ -1098,7 +1100,7 @@ function render(){
         html += '<table><thead><tr><th>Campanha</th><th>Mês</th><th class="num">Valor</th><th>Status</th></tr></thead><tbody>';
         e.campanhas.sort((a,b)=> compareMes(a.mes, b.mes) || naturalCompare(a.campanha, b.campanha))
           .forEach(c => {
-            html += '<tr><td>'+c.campanha+'</td><td>'+c.mes+'</td><td class="num">'+fmtMoney(c.premiacao)+'</td><td><span class="pill '+(c.status==="Pago"?"pago":"pend")+'">'+c.status+'</span></td></tr>';
+            html += '<tr><td>'+c.campanha+(c.observacao ? '<div class="obs-note">'+c.observacao+'</div>' : '')+'</td><td>'+c.mes+'</td><td class="num">'+fmtMoney(c.premiacao)+'</td><td><span class="pill '+(c.status==="Pago"?"pago":"pend")+'">'+c.status+'</span></td></tr>';
           });
         html += '</tbody></table></div></td></tr>';
       }
