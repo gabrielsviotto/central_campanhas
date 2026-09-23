@@ -609,10 +609,22 @@ async function handleSetPassword(){
 // aparece sozinha porque o Realtime avisa este app sobre qualquer mudança.
 // ---------------------------------------------------------------------------
 async function fetchRecords(){
-  const { data, error } = await sb.from(CAMPANHAS_TABLE).select("*");
-  if(error) throw error;
+  // Sem paginação explícita, o Supabase devolve no máximo 1000 linhas por
+  // consulta — com a tabela passando desse tamanho, linhas mais recentes
+  // ficavam de fora silenciosamente. Por isso buscamos em páginas até não
+  // sobrar mais nada.
+  const PAGE_SIZE = 1000;
+  let allRows = [];
+  let from = 0;
+  while(true){
+    const { data, error } = await sb.from(CAMPANHAS_TABLE).select("*").range(from, from + PAGE_SIZE - 1);
+    if(error) throw error;
+    allRows = allRows.concat(data || []);
+    if(!data || data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
   const records = {};
-  (data || []).forEach(row => {
+  allRows.forEach(row => {
     const cpf = String(row.cpf || "").trim();
     if(!cpf) return;
     const record = {
