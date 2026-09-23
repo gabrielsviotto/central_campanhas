@@ -659,16 +659,35 @@ async function refreshRecordsSilently(){
   render();
 }
 
+// O Realtime dispara um evento por LINHA alterada — uma sincronização
+// grande (centenas/milhares de linhas) gera uma rajada de eventos quase
+// simultâneos. Sem isso, cada evento buscaria a tabela inteira de novo,
+// derrubando o navegador com centenas de requisições ao mesmo tempo
+// (ERR_INSUFFICIENT_RESOURCES). Por isso juntamos a rajada: só busca a
+// tabela de novo depois que os eventos pararem de chegar por 1 segundo.
+let refreshDebounceTimer = null;
+function scheduleRefresh(){
+  if(refreshDebounceTimer) clearTimeout(refreshDebounceTimer);
+  refreshDebounceTimer = setTimeout(() => {
+    refreshDebounceTimer = null;
+    refreshRecordsSilently();
+  }, 1000);
+}
+
 function subscribeRealtime(){
   if(realtimeChannel) return;
   realtimeChannel = sb.channel("campanhas-changes")
     .on("postgres_changes", { event: "*", schema: "public", table: CAMPANHAS_TABLE }, () => {
-      refreshRecordsSilently();
+      scheduleRefresh();
     })
     .subscribe();
 }
 
 function unsubscribeRealtime(){
+  if(refreshDebounceTimer){
+    clearTimeout(refreshDebounceTimer);
+    refreshDebounceTimer = null;
+  }
   if(realtimeChannel){
     sb.removeChannel(realtimeChannel);
     realtimeChannel = null;
